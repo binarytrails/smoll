@@ -1,0 +1,69 @@
+#!/bin/bash
+
+echo "$(tput setaf 1)You should run it as root."
+
+if grep -qs '/mnt/kali' /proc/mounts; then
+    umount /mnt/kali
+fi
+
+echo -n "What device? (/dev/sdx1): "; read sdxn
+sdx=$(echo $sdxn | head -c 8)
+echo -n "Absolute path to kali image? :"; read path_to_kali
+
+parted sdx print
+
+# Wipe the usb partitons with parted
+# dd if=/dev/zero of=/dev/sdc # I'm just saying it takes few seconds with parted & a life time with dd.
+parted $sdx mklabel msdos
+echo "As long as the alignment is on a multiple of 8, you're fine, and 2048 is a multiple of 8"
+echo "The lost disk space is puny -- 0.0000336% of your total disk space"
+sdx_size=$(fdisk -l $sdx | grep -Po '(?<=\/dev\/sdc: ).*(?=MB)')
+parted $sdx mkpart primary fat32 0 $sdx_size
+
+: " One day of suffering showed me that dd isn't awesome at all.
+    Even if the command is finished executing it isn't really done. 
+    I could tell it by the usb light and the waiting time for the copy to complete on the usb ejection via nautilus.
+    Seriously, no one should live such a hell. Hence, I used 'cp' and the 'sync' command.
+"
+# dd if=$path_to_kali of=$sdx bs=1M # oh I forgot to mention with this command I got 'Failed to load ldlinux.c32' boot error.
+cp $path_to_kali $sdx
+sync
+
+exit 0 # TODO verify the rest
+
+echo -n "What size do you want your persistence volume? (1gb):"; read psize
+size=$psize
+
+read bytes _ < <(du -bcm $path_to_kali |tail -1); echo $bytes
+parted $sdx mkpart primary $bytes $size
+
+echo "Do yo want to use luks encryption? (yes, no): "; read answer
+if [ "$answer" == "yes" ]; then
+    cryptsetup --verbose --verify-passphrase luksFormat $sdxn
+    cryptsetup luksOpen $sdxn kali
+    mkfs.ext3 -L persistence /dev/mapper/kali
+    e2label /dev/mapper/kali persistence
+    mount /dev/mapper/kali /mnt/kali
+else
+    parted $sdx mkpart primary $bytes $size
+    mkfs.ext3 -L persistence $sdxn
+    e2label $sdxn persistence
+    mount $sdxn /mnt/kali
+fi
+
+if [ ! -d "/mnt/kali" ]; then
+    mkdir -p /mnt/kali
+fi
+
+echo "Mounting the persistence volume..."
+chmod -R ugo+rw /mnt/kali
+echo "/ union" > /mnt/kali/persistence.conf
+
+echo "Unmounting the persistence volume..."
+if [ "$answer" == "yes" ]; then
+    umount /dev/mapper/kali
+    cryptsetup luksClose /dev/mapper/kali
+else
+    umount $sdxn
+fi
+
