@@ -1,0 +1,79 @@
+<!-- 
+	Build by Seva Ivanov - www.github.com/sevaivanov
+	Rate my repository if you like it!
+ -->
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<title>Css slideshow</title>
+
+		<link rel="stylesheet" href="demo.css"/>
+
+		<style type="text/css">
+			/*{% for photo in photos %}*/
+
+				a#photo-1:target + div#container-photo-1
+				{
+					display: block; # shows the container
+				}
+
+				a#photo-1:target + div#container-photo-1 > div#slide-photo-1 > img#photo-1
+				{
+					opacity: 1;
+					transform: scale(1);
+				}
+
+			/*{% endfor %}*/
+		</style>
+	</head>
+
+	<body>
+		<div id="slideshow">
+			<ul class="slider">
+				<li class="slides" >
+					<!-- {% for photo in photos %} -->
+						<a id="photo-1" class="cap"></a>
+
+						<div id="container-photo-1">
+
+							<div id="slide-photo-1">
+								<img id="photo-1" src="../../img/cloudy_landscape.jpg" alt=""/>
+							</div>
+
+							<div id="details">
+								<ul>
+									<li>
+										Title: Cloudy Landscape
+									</li>
+									<li>
+										Author: Internet
+									</li>
+									<li>
+										Category: Wallpaper
+									</li>
+									<li>
+										Date: 2099/10/21
+									</li>
+								</ul>
+							</div>
+
+						</div>
+					<!-- {% endfor %} -->
+				</li>
+
+				<li class="track">
+					<!-- {% for photo in photos %} -->
+						<a href="#photo-1" class="tr1"></a>
+					<!-- {% endfor %} -->
+				</li>
+			</ul>
+		</div>
+
+		<div id="return">
+			<a href="#">
+				<img  src="../../img/back-arrow-white.png"/>
+			</a>
+		</div>
+	</body>
+</html>
