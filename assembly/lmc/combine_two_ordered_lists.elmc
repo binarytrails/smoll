@@ -67,9 +67,9 @@ INPUT_LIST1
 
 VALUE_AT_OF_LIST1
     (STO array)
-    (LDA VALUE_AT_OF_LIST1)         ; loads numeric command
+    (LDA VALUE_AT_OF_LIST1)         ; load numeric command
     (ADD one)
-    (STO VALUE_AT_OF_LIST1)         ; changes the numeric command
+    (STO VALUE_AT_OF_LIST1)         ; change the numeric command
     (BR INPUT_LIST1)
 
 SEPARATE_LISTS_BY_ZERO
@@ -164,7 +164,7 @@ SHOW_REST_LIST1
 FIN
     (HLT)
 
-;; Constantes
+;; Constants
     one        (DAT 01)
     st        (DAT 300)
     ld        (DAT 500)
