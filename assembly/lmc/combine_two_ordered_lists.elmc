@@ -27,7 +27,7 @@
 ;       2. Hit 0 to say the list was provided.
 ;       3. Input 2nd ordered list.
 ;       4. Hit 0.
-;		* The combined list output is in reverse.
+;       * The combined list output is in reverse.
 ;
 ;   Main Logic:
 ;       Overwrite the next numeric command to make it target the next index.
@@ -67,9 +67,9 @@ INPUT_LIST1
 
 VALUE_AT_OF_LIST1
     (STO array)
-    (LDA VALUE_AT_OF_LIST1)    ; loads numeric command
+    (LDA VALUE_AT_OF_LIST1)         ; loads numeric command
     (ADD one)
-    (STO VALUE_AT_OF_LIST1)    ; changes the numeric command
+    (STO VALUE_AT_OF_LIST1)         ; changes the numeric command
     (BR INPUT_LIST1)
 
 SEPARATE_LISTS_BY_ZERO
@@ -171,12 +171,12 @@ FIN
     
 ;; Variables
 
-    nb1        (DAT 0)
-    nb2        (DAT 0)
+    nb1         (DAT 0)
+    nb2         (DAT 0)
 
-    idx_l1        (DAT 0)
-    idx_l2        (DAT 0)
+    idx_l1      (DAT 0)
+    idx_l2      (DAT 0)
     
-    sarray        (DAT 0)         ; start array index
-    s2array        (DAT 0)        ; middle array zero
-    array         (DAT 0)
+    sarray      (DAT 0)             ; start array index
+    s2array     (DAT 0)             ; middle array zero
+    array       (DAT 0)
