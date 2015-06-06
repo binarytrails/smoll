@@ -32,9 +32,9 @@
 ;   Main Logic:
 ;       Overwrite the next numeric command to make it target the next index.
 ;
-;		1. Load the command label which will load the command numeric value.
-;		2. Change its value by adding or substracting something (ADD VAR).
-;		3. Push (STO) it back by referencing to the label title.
+;        1. Load the command label which will load the command numeric value.
+;        2. Change its value by adding or substracting something (ADD VAR).
+;        3. Push (STO) it back by referencing to the label title.
 ;
 ;   How does the two combined lists look aligned in the cases:
 ;       [1, 2, 3, 0, 4, 5, 6]
