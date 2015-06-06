@@ -1,0 +1,182 @@
+;    Copyright (C) 2015 Vsevolod Ivanov
+;
+;    This program is free software: you can redistribute it and/or modify
+;    it under the terms of the GNU GENERAL Public License as published by
+;    the Free Software Foundation, either version 3 of the License, or
+;    (at your option) any later version.
+;
+;    This program is distributed in the hope that it will be useful,
+;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;    GNU GENERAL Public License for more details.
+;
+;    You should have received a copy of the GNU GENERAL Public License
+;    along with this program.  If not, see <http://www.gnu.org/licenses/>
+;
+;*******************************CONTEXT**************************************
+;
+;   The goal is to illustrate Little Man Computer self-modifying code.
+;
+;   Test This Code:
+;       Install Emacs (I know, it is painful but hey, it is very clear.)
+;       'M-x list-packages' M-x is basicly ALT-x and select 'lmc' to install.
+;       Open code.elmc & select in LMC-ASM > Load into Simulator, Run.
+;
+;   User Flow:
+;       1. Input 1st ordered list.
+;       2. Hit 0 to say the list was provided.
+;       3. Input 2nd ordered list.
+;       4. Hit 0.
+;		* The combined list output is in reverse.
+;
+;   Main Logic:
+;       Overwrite the next numeric command to make it target the next index.
+;
+;		1. Load the command label which will load the command numeric value.
+;		2. Change its value by adding or substracting something (ADD VAR).
+;		3. Push (STO) it back by referencing to the label title.
+;
+;   How does the two combined lists look aligned in the cases:
+;       [1, 2, 3, 0, 4, 5, 6]
+;
+;   Works With:
+;        [1, 2] et [3, 4]
+;        [1, 3, 5] et [2, 4, 6]
+;        [0] et [1, 2]
+;        [1, 2] et [0]
+;        [1, 2] et [1, 0]
+;        [-1, 2] et [1, 3]
+;        [-2, 5, 7] et [-10, 2, 4, 15]
+;    
+;   Fails With:
+;       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+; 
+;   Restrictions:
+;       * Around 20 elements allowed because of the 100 available registers.
+;       * LMC does not convert back to negative i.e. -1 = 999, -2 = 998 etc.
+;
+;****************************CODE_STARTS_HERE**********************************
+
+INIT
+    (LDA VALUE_AT_OF_LIST1)
+    (STO sarray)
+
+INPUT_LIST1
+    (IN)
+    (BRZ SEPARATE_LISTS_BY_ZERO)
+
+VALUE_AT_OF_LIST1
+    (STO array)
+    (LDA VALUE_AT_OF_LIST1)    ; loads numeric command
+    (ADD one)
+    (STO VALUE_AT_OF_LIST1)    ; changes the numeric command
+    (BR INPUT_LIST1)
+
+SEPARATE_LISTS_BY_ZERO
+    (LDA VALUE_AT_OF_LIST1)
+    (ADD one)
+    (STO VALUE_AT_OF_LIST2)
+    (SUB st)                        ; store center zero position
+    (STO s2array)
+
+INPUT_LIST2
+    (IN)
+    (BRZ INIT_COMPARE)
+VALUE_AT_OF_LIST2
+    (STO array)
+    (LDA VALUE_AT_OF_LIST2)
+    (ADD one)
+    (STO VALUE_AT_OF_LIST2)
+    (BR INPUT_LIST2)
+
+INIT_COMPARE
+    (LDA sarray)
+    (SUB st)
+    (ADD ld)
+    (STO SET_L1_FOR_COMPARE)
+
+    (LDA s2array)
+    (ADD ld)
+    (STO SET_L2_FOR_COMPARE)
+
+START_COMPARE
+
+SET_L2_FOR_COMPARE    
+    (LDA nb2)
+    (STO nb2)
+
+SET_L1_FOR_COMPARE    
+    (LDA nb1)
+    (STO nb1)
+
+; DO_COMPARE
+    (SUB nb2)                       ; nb1 -  nb2
+    (BRP NB2_IS_SMALLER)            ; nb1 <= nb2
+
+NB1_IS_SMALLER
+    (LDA nb1)
+    (BRZ ARRANGE_SHOW_LIST2_REST)   ; stop on zero and show the rest of list-2
+    (OUT)
+    (LDA SET_L1_FOR_COMPARE)        ; next index in list-1
+    (ADD one)
+    (STO SET_L1_FOR_COMPARE)
+    (BR ARRANGE_COMPARE)
+
+NB2_IS_SMALLER
+    (LDA nb2)
+    (BRZ ARRANGE_SHOW_REST_LIST1)    ; stop on zero and show the rest of list-1
+    (OUT)
+    (LDA SET_L2_FOR_COMPARE)         ; next index in list-2
+    (ADD one)
+    (STO SET_L2_FOR_COMPARE)
+
+ARRANGE_COMPARE
+    (BR START_COMPARE)
+
+ARRANGE_SHOW_LIST2_REST
+    (LDA nb2)
+    (BRZ FIN)
+    (LDA SET_L2_FOR_COMPARE)
+    (STO SHOW_REST_LIST2)
+SHOW_REST_LIST2
+    (LDA idx_l2)
+    (BRZ FIN)
+    (OUT)
+    (LDA SHOW_REST_LIST2)
+    (ADD one)
+    (STO SHOW_REST_LIST2)
+    (BR SHOW_REST_LIST2)
+
+ARRANGE_SHOW_REST_LIST1
+    (LDA nb1)
+    (BRZ FIN)
+    (LDA SET_L1_FOR_COMPARE)
+    (STO SHOW_REST_LIST1)
+SHOW_REST_LIST1
+    (LDA idx_l1)
+    (BRZ FIN)
+    (OUT)
+    (LDA SHOW_REST_LIST1)
+    (ADD one)
+    (STO SHOW_REST_LIST1)
+    (BR SHOW_REST_LIST1)
+
+FIN
+    (HLT)
+
+;; Constantes
+    one        (DAT 01)
+    st        (DAT 300)
+    ld        (DAT 500)
+    
+;; Variables
+
+    nb1        (DAT 0)
+    nb2        (DAT 0)
+
+    idx_l1        (DAT 0)
+    idx_l2        (DAT 0)
+    
+    sarray        (DAT 0)         ; start array index
+    s2array        (DAT 0)        ; middle array zero
+    array         (DAT 0)
