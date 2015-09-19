@@ -1,0 +1,38 @@
+<html>
+    <!-- Add the below three section & the CSS file. -->
+    <head>
+        <!-- 1. From this -->
+        <link type="text/css" rel="stylesheet" href="style.css" />
+        <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+        <!-- To this -->
+    </head>
+    <script type="text/javascript">
+        // 2. From this
+        function meow(id)
+        {
+            var message = $("#" + id).val(); // get input tag by id.
+
+            $('#meow-body p').text(message);
+            $('#meow-background').fadeIn("fast",function()
+            {
+                $('#ok-button,#meow-close-button').click(function(){
+                    $('#meow-background').hide();
+                });
+            });
+        }
+        // To this
+    </script>
+    <body>
+        <input type="text" id="name" placeholder="Enter Name">
+        <button onclick="javascript:meow('name');">Alert</button>
+        <!-- 3. From this -->
+        <div id="meow-background">
+            <div id="meow-container">
+                <div id="meow-head">MEOW <div id="meow-close-button"></div></div>
+                <div id="meow-body"><p></p></div>
+                <div id="ok-button">OK</div>
+            </div>
+        </div>
+        <!-- To this -->
+    </body>
+</html>

@@ -1,0 +1,84 @@
+
+#meow-background
+{
+    position: absolute;
+    display: none;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    margin: auto;
+    background: rgba(0,0,0,0.8);
+}
+
+#meow-container
+{
+    position: absolute;
+    width: 40%;
+    height: auto;
+    max-height: 15em;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+
+    margin: auto;
+    overflow: hidden;
+
+    background: white;
+    border-radius: 15px;
+    border: 1px solid white;
+    box-shadow: 1px 1px 5px white;
+}
+
+#meow-container #meow-head
+{
+    height: 2em;
+
+    color: white;
+    background: black;
+
+    text-indent: 2%;
+    padding: 2% 2% 0 2%;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+#meow-container #meow-body
+{
+    height: auto;
+    color: black;
+    background: white;
+    text-align: center;
+    padding: 10% 8% 2% 8%;
+}
+
+    #meow-body p
+    {
+        margin: 1em;
+    }
+
+#meow-container #meow-head #meow-close-button
+{
+    width: 10%;
+    height: 100%;
+    float: right;
+    cursor: pointer;
+    background: url("images/logos/circled-close-button-white.png");
+    background-size: 100% 100%;
+}
+
+#meow-container #ok-button
+{
+    width: 100px;
+    height: 35px;
+    
+    text-align: center;
+    margin: 10px auto;
+    cursor: pointer;
+
+    color: white;
+    background: black;
+    border-radius: 5px;
+    line-height: 35px;
+}
