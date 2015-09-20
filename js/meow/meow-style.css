@@ -73,6 +73,14 @@
             overflow-y: auto;
         }
 
+            #meow-body p a
+            {
+                color: black;
+                outline: 0;
+                cursor: pointer;
+                text-decoration: none;
+            }
+
     #meow-container #ok-button
     {
         width: 100px;
@@ -87,3 +95,4 @@
         border-radius: 5px;
         line-height: 35px;
     }
+

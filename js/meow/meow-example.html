@@ -4,14 +4,18 @@
         <!-- 1. From this -->
         <link type="text/css" rel="stylesheet" href="meow-style.css" />
         <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+        <script src="https://cdn.rawgit.com/showdownjs/showdown/1.2.3/dist/showdown.min.js"></script>
         <!-- To this -->
     </head>
     <script type="text/javascript">
-        // 2. From this
-        function meow(title, message)
+        // 2. From this:
+        function meow(title, markdownMessage)
         {
+            var converter = new showdown.Converter();
+            htmlMessage = converter.makeHtml(markdownMessage);
+       
             $('#meow-head p').html(title);
-            $('#meow-body p').html(message);
+            $('#meow-body p').html(htmlMessage);
             $('#meow-background').fadeIn("fast",function()
             {
                 $('#ok-button,#meow-close-button').click(function(){
@@ -22,8 +26,8 @@
         // To this
     </script>
     <body>
-        <!-- Examples -->
-        <button onclick="javascript:meow('Title', 'Message</br>Miaw');">Alert</button>
+        <!-- Example -->
+        <button onclick="meow('Title', 'Message & *[link](http://www.google.com)*');">Alert</button>
         <!-- 3. From this -->
         <div id="meow-background">
             <div id="meow-container">
