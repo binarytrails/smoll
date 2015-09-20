@@ -1,14 +1,14 @@
 <html>
-    <!-- Add the below three section & the CSS file. -->
+    <!-- Insert the three section below & add the meow-style.css. -->
     <head>
-        <!-- 1. From this -->
+        <!-- 1/ -->
         <link type="text/css" rel="stylesheet" href="meow-style.css" />
         <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
         <script src="https://cdn.rawgit.com/showdownjs/showdown/1.2.3/dist/showdown.min.js"></script>
-        <!-- To this -->
+        <!-- /1 -->
     </head>
     <script type="text/javascript">
-        // 2. From this:
+        // 2/
         function meow(title, markdownMessage)
         {
             var converter = new showdown.Converter();
@@ -23,12 +23,12 @@
                 });
             });
         }
-        // To this
+        // /2
     </script>
     <body>
         <!-- Example -->
         <button onclick="meow('Title', 'Message & *[link](http://www.google.com)*');">Alert</button>
-        <!-- 3. From this -->
+        <!-- 3/ -->
         <div id="meow-background">
             <div id="meow-container">
                 <div id="meow-head"><p>MEOW </p><div id="meow-close-button"></div></div>
@@ -36,6 +36,6 @@
                 <div id="ok-button">OK</div>
             </div>
         </div>
-        <!-- To this -->
+        <!-- /3 -->
     </body>
 </html>
