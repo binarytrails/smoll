@@ -8,11 +8,10 @@
     </head>
     <script type="text/javascript">
         // 2. From this
-        function meow(id)
+        function meow(title, message)
         {
-            var message = $("#" + id).val(); // get input tag by id.
-
-            $('#meow-body p').text(message);
+            $('#meow-head p').html(title);
+            $('#meow-body p').html(message);
             $('#meow-background').fadeIn("fast",function()
             {
                 $('#ok-button,#meow-close-button').click(function(){
@@ -23,8 +22,8 @@
         // To this
     </script>
     <body>
-        <input type="text" id="name" placeholder="Enter Name">
-        <button onclick="javascript:meow('name');">Alert</button>
+        <!-- Examples -->
+        <button onclick="javascript:meow('Title', 'Message</br>Miaw');">Alert</button>
         <!-- 3. From this -->
         <div id="meow-background">
             <div id="meow-container">
