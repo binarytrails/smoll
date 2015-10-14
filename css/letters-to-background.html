@@ -1,0 +1,79 @@
+<html>
+    <head>
+        <!--
+            Illustrating how to make a title with a changing background.
+        -->
+        <style type="text/css">
+            #main, #container
+            {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                overflow: hidden;
+            }
+            #main
+            {
+                width: 100%;
+                height: 100%;
+                background: black;
+                text-align: center;
+            }
+            #container
+            {
+                width: 70%;
+                margin: 0 auto;
+            }
+            .letter
+            {
+                display: inline-block;
+                width: 10em;
+                height: 10em;
+                /* your main background */
+                background-image: url('../images/matrix.jpg');
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+                background-size: cover;
+                background-position: center;
+            }
+                .letter:hover
+                {
+                    /* all letters changing background */
+                    background: white;
+                }
+                /* individual letters changing backgrounds */
+                #a:hover
+                { 
+                    background: white;
+                }
+                #c:hover
+                { 
+                    background: purple;
+                }
+                #d:hover
+                { 
+                    background: yellow;
+                }
+        </style>
+    </head>
+    <body>
+        <div id="main">
+            <div id="container">
+                <div id="a" class="letter"></div>
+                <div id="b" class="letter"></div>
+                <div id="c" class="letter"></div>
+                <div id="d" class="letter"></div>
+                <div class="letter"></div>
+                <div class="letter"></div>
+                <div class="letter"></div>
+                <div class="letter"></div>
+                <div class="letter"></div>
+                <div class="letter"></div>
+                </br></br>
+                It's a demo for a student.</br></br>
+                Read the in-code comments!
+            </div>
+       </div>
+    </body>
+</html>
