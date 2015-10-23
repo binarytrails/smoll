@@ -1,5 +1,8 @@
+<!DOCTYPE html>
 <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="author" content="Seva Ivanov">
         <!--
             Illustrating how to make a title with a changing background.
         -->
@@ -25,24 +28,24 @@
                 width: 70%;
                 margin: 0 auto;
             }
-            .letter
+            .shape
             {
                 display: inline-block;
                 width: 10em;
                 height: 10em;
-                /* your main background */
+                /* your main background setup */
                 background-image: url('../images/matrix.jpg');
                 background-repeat: no-repeat;
                 background-attachment: fixed;
                 background-size: cover;
                 background-position: center;
             }
-                .letter:hover
+                /* all shapes changing background */
+                .shape:hover
                 {
-                    /* all letters changing background */
                     background: white;
                 }
-                /* individual letters changing backgrounds */
+                /* individual shapes changing backgrounds */
                 #a:hover
                 { 
                     background: white;
@@ -60,16 +63,16 @@
     <body>
         <div id="main">
             <div id="container">
-                <div id="a" class="letter"></div>
-                <div id="b" class="letter"></div>
-                <div id="c" class="letter"></div>
-                <div id="d" class="letter"></div>
-                <div class="letter"></div>
-                <div class="letter"></div>
-                <div class="letter"></div>
-                <div class="letter"></div>
-                <div class="letter"></div>
-                <div class="letter"></div>
+                <div id="a" class="shape"></div>
+                <div id="b" class="shape"></div>
+                <div id="c" class="shape"></div>
+                <div id="d" class="shape"></div>
+                <div class="shape"></div>
+                <div class="shape"></div>
+                <div class="shape"></div>
+                <div class="shape"></div>
+                <div class="shape"></div>
+                <div class="shape"></div>
                 </br></br>
                 It's a demo for a student.</br></br>
                 Read the in-code comments!
