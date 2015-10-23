@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Seva Ivanov">
+    <style>
+        body
+        {
+            /* how deep can we scroll */
+            height: 5000px;
+            color: white;
+            background: #1E1E1E;
+        }
+        #container
+        {
+            position: absolute;
+            width: 20%;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            margin: 0 auto;
+            text-align: center;
+        }
+    </style>
+    <script>
+        // It uses recursion to call itself with altered arguments.
+        function infiniteScroll(callsCounter, maxCalls, pxToYScroll, msDelay) 
+        {
+            setTimeout(function ()
+            {
+                console.log(callsCounter);
+
+                if (callsCounter < maxCalls)
+                {
+                    window.scrollTo(0, pxToYScroll);
+                    infiniteScroll(callsCounter + 1, maxCalls, 
+                        500 + pxToYScroll, msDelay);
+                }
+
+            }, msDelay)
+        }
+    </script>
+</head>
+    <body>
+        <div id="container">
+            <p>Read the code</br>&</br> console output.</p></br>
+            <button onclick="infiniteScroll(0, 10, 500, 100);">
+                Recursive Scroll
+            </button>
+        </div>
+    </body>
+</html>

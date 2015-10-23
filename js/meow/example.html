@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <!-- Insert the three sections below & add the meow-style.css. -->
+    <head>
+        <meta charset="UTF-8">
+        <meta name="author" content="Seva Ivanov">
+        <!-- 1/ -->
+        <link type="text/css" rel="stylesheet" href="meow.css" />
+        <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+        <script src="https://cdn.rawgit.com/showdownjs/showdown/1.2.3/dist/showdown.min.js"></script>
+        <!-- /1 -->
+    </head>
+    <script type="text/javascript">
+        // 2/
+        function meow(title, markdownMessage)
+        {
+            var converter = new showdown.Converter();
+            htmlMessage = converter.makeHtml(markdownMessage);
+       
+            $('#meow-head p').html(title);
+            $('#meow-body p').html(htmlMessage);
+            $('#meow-background').fadeIn("fast",function()
+            {
+                $('#ok-button,#meow-close-button').click(function(){
+                    $('#meow-background').hide();
+                });
+            });
+        }
+        // /2
+    </script>
+    <body>
+        <!-- Example -->
+        <button onclick="meow('Title', 'Message & *[link](http://www.google.com)*');">Alert</button>
+        <!-- 3/ -->
+        <div id="meow-background">
+            <div id="meow-container">
+                <div id="meow-head"><p>MEOW </p><div id="meow-close-button"></div></div>
+                <div id="meow-body"><p></p></div>
+                <div id="ok-button">OK</div>
+            </div>
+        </div>
+        <!-- /3 -->
+    </body>
+</html>

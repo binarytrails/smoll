@@ -1,0 +1,84 @@
+<!--
+    Build by Seva Ivanov - www.github.com/sevaivanov
+    Rate my repository if you like it!
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            div.img-container
+            {
+                position: relative;
+                background: green;
+                animation: moveup-img-container 2s linear 0s infinite;
+                animation-play-state: paused;
+            }
+            div.img-container img
+            {
+                display: block;
+                height: 100%;
+                width: 100%;
+                max-height: 100%;
+                max-width: 100%; 
+            }
+            div.img-container:hover
+            {
+                animation-play-state: running
+            }
+            div.img-container-shadow
+            {
+                position: relative;
+                height: 100%;
+                width: 100%;
+                background: purple;
+                animation: movedown-img-container-shadow 2s linear 0s infinite;
+                animation-play-state: paused;
+            }
+            div.img-container-shadow:hover
+            {
+                animation-play-state: running
+            }
+
+            @keyframes moveup-img-container
+            {
+                0%
+                {
+                    top: 0px;
+                }
+                50% 
+                {
+                    top: -30px; 
+                }
+                100% 
+                {
+                    top: 0px;
+                }
+            }
+            @keyframes movedown-img-container-shadow
+            {
+                0% 
+                {
+                    box-shadow: 0px 30px 40px -45px #666362;
+                }
+                50% 
+                {
+                    box-shadow: 0px 80px 35px -40px #666362;
+                }
+                100%
+                {
+                    box-shadow: 0px 30px 40px -45px #666362;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        </br></br></br>
+        <!-- img-container height & width has to be build dynamically on view render according to the image -->
+        <div class="img-container" style="height: 200px; width: 300px;">
+            <div class="img-container-shadow">
+                <img src="../../images/jaded.jpg"></img>
+            </div>
+        </div>
+    </body>
+</html>
+
