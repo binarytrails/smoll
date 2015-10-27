@@ -63,19 +63,27 @@
                     defaultMaskSrc = "";
                 
                 $(".mask").hover(function()
-                { 
+                {
                     defaultMaskSrc = $("#mask").attr("src");
+
                     container.css("background", "orange");
                     $("#mask").attr("src", "../images/hotline-miami/rasmus.png");
+
+                    $("#backtrack").trigger("play");
+                    $("#backtrack").prop("volume", 0.7); // Volume from 0 to 1.
                 },
                 function()
                 {
                     $("#mask").attr("src", defaultMaskSrc);
                     container.css("background", containerColor);
+                    
+                    $("#backtrack").trigger("pause");
                 });
+                
+                //$("#backtrack").attr('autoplay', 'autoplay');
 
                 return;
-                // move before .mask hover bind
+                // Duplicate mask to many; move before .mask hover bind.
                 for(var index = 1; index <= 10; index++)
                 {
                     mask = $("#mask").clone();
@@ -91,6 +99,7 @@
             <div id="content">
                 <img id="mask" class="mask" src="../images/hotline-miami/jacket.png"/>
             </div>
+            <audio id="backtrack" src="../audio/hotline-miami/deep-cover.mp3"/>
         </div>
     </body>
 </html>
