@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="author" content="Seva Ivanov">
+
+        <!-- libs -->
+        <script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
+
+        <style type="text/css">
+            body
+            {
+                color: white;
+            }
+
+                #container
+                {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    top: 0;
+                    right: 0;
+                    bottom: 0;
+                    left: 0;
+                    overflow: hidden;
+                    text-align: center;
+                    background: purple;
+                }
+
+                    #content
+                    {
+                        display: inline-block;
+                        width: 15%;
+                        margin: 15% auto;
+                        overflow: hidden;
+                    }
+                    /* Changed via Javascript */
+                    #content-many-items
+                    {
+                        display: inline-block;
+                        width: 80%;
+                        height: auto;
+                        margin: 4em;
+                        overflow-y: auto;
+                    }
+
+                        #content img
+                        {
+                            width: 100%;
+                        }
+        </style>
+        <script type="text/javascript">
+
+            $(document).ready(function()
+            {
+                // Native Javascript
+                console.log(document.getElementById("mask").src);
+                // JQuery
+                console.log($("#mask").attr("src"));
+
+                var container = $("#container"),
+                    containerColor = container.css("background"),
+                    defaultMaskSrc = "";
+                
+                $(".mask").hover(function()
+                {
+                    defaultMaskSrc = $("#mask").attr("src");
+
+                    container.css("background", "orange");
+                    $("#mask").attr("src", "../images/hotline-miami/rasmus.png");
+
+                    $("#backtrack").trigger("play");
+                    $("#backtrack").prop("volume", 0.7); // Volume from 0 to 1.
+                },
+                function()
+                {
+                    $("#mask").attr("src", defaultMaskSrc);
+                    container.css("background", containerColor);
+                    
+                    $("#backtrack").trigger("pause");
+                });
+                
+                //$("#backtrack").attr('autoplay', 'autoplay');
+
+                return;
+                // Duplicate mask to many; move before .mask hover bind.
+                for(var index = 1; index <= 10; index++)
+                {
+                    mask = $("#mask").clone();
+                    mask.attr("id", mask.attr("id") + index);
+                    $("#content").append(mask);
+                } 
+                $("#content").attr("id", "content-many-items");
+            });
+        </script>
+    </head>
+    <body>
+        <div id="container">
+            <div id="content">
+                <img id="mask" class="mask" src="../images/hotline-miami/jacket.png"/>
+            </div>
+            <audio id="backtrack" src="../audio/hotline-miami/deep-cover.mp3"/>
+        </div>
+    </body>
+</html>
