@@ -1,0 +1,114 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\usepackage{hyperref} % url etc.
+
+\usepackage{listings} % code sections
+\usepackage{color}
+
+\usepackage{pgfplotstable} % ploting data
+\usepackage{pgfplots}
+
+\definecolor{gray}{rgb}{0.5, 0.5, 0.5}
+\definecolor{cyan}{rgb}{0.0, 0.29, 0.29}
+\definecolor{darkblue}{rgb}{0.0, 0.18, 0.39}
+\definecolor{darkgreen}{rgb}{0.09, 0.45, 0.27}
+
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{darkblue},
+  commentstyle=\color{darkgreen},
+  stringstyle=\color{cyan},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\newcommand{\Mod}[1]{\ (\text{mod}\ #1)} % mod i.e. \Mod{1}
+
+\usepackage{graphicx}
+\begin{document}
+
+    \begin{titlepage}
+    \vspace*{\fill}
+    \begin{center}
+        DEPARTMENT OF CHRISTMAS\\[1cm]
+        UNIVERSITY THE NORTH POLE\\[1cm]
+        GIFT 001:\\[0.2cm]
+        HOW TO WRITE STORIES FOR CHILDREN\\[2cm]
+        Assignment 1\\[2cm]
+        By\\[0.2cm]
+        Santa Claus\\[0.2cm]
+        0000001\\[2cm]
+        Autumn 2016\\[0.2cm]
+        01 December 2016
+    \end{center}
+    \vspace*{\fill}
+    \end{titlepage}
+
+    Due: Midnight of 1st January 2017.\\
+  
+    \begin{enumerate}
+    
+    \item If a child is bad, would you still give him gifts?
+    
+        \begin{enumerate}
+        
+        \item Suppose he appologizes, what would you do now?\\
+        
+        \end{enumerate}  
+        
+    \item Let the $\sum_{i=1}^{n}2i$ be the performance of your leprechauns.\\
+    
+    What would be the big-Oh of their performance?\\
+    
+    Here is an unrelated table:
+    
+    \begin{center}
+        \begin{tabular}{|c|c|c|}
+            \hline
+            i & j & k\\
+            \hline
+            1 & 0 & 1\\
+            2 & 2 & 1\\
+            \hline
+        \end{tabular}
+        \newline
+    \end{center}
+    
+    Now, let's clear the rest of the page!\clearpage
+    
+    \item And keep going $\rightarrow$ here $\leftarrow$ with an example of code:\\
+    
+\begin{lstlisting}[mathescape]
+// Change the loop to $\color{darkgreen}\frac{n(n + 1)}{2} $ from i=1 to n
+for (int i = 0; i < n; i++)
+{
+    // Use this phrase:
+    System.out.println("I am Santa Claus").
+}
+\end{lstlisting}
+
+    
+    \item That's it folks!\\
+    
+    You can find out more about the syntax at \href{https://www.sharelatex.com/learn/List_of_Greek_letters_and_math_symbols}{sharelatex.com}.\\
+    
+    There is also real-time preview software available like \href{https://github.com/alexandervdm/gummi}{Gummi}.
+    
+    \end{enumerate}
+    
+\end{document}
