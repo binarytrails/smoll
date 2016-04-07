@@ -1,0 +1,15 @@
+echo "Read and adjust the source code."; exit
+backupDirPath=$1; backupName=$2
+cd $backupDirPath
+echo "/dev/*
+/proc/*
+/sys/*
+/tmp/*
+/run/*
+/mnt/*
+/media/*
+/lost+found
+/home/*/.thumbnails/*
+/home/*/.cache/*
+/home/*/.local/share/Trash/*" > excludes
+rsync -aAXv --update --delete --exclude-from 'excludes' / $(echo "$(pwd)/backupName/")
