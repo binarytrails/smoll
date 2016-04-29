@@ -12,3 +12,7 @@ Higher Order Programming | Prolog | [readme](https://github.com/sevaivanov/short
 Self-Modifying Code | LMC | [everything](https://github.com/sevaivanov/short/blob/master/assembly/lmc/combine_two_ordered_lists.elmc#L1)
 
 You can [preview](https://sevaivanov.github.io/short/) the web demonstrations.
+
+## License
+
+The code is licensed under a GNU General Public License [GPLv3](http://www.gnu.org/licenses/gpl.html).
