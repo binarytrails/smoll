@@ -11,7 +11,7 @@ Java Static Analysis | Prolog | [readme](https://github.com/sevaivanov/short/blo
 Higher Order Programming | Prolog | [readme](https://github.com/sevaivanov/short/blob/master/prolog/higher-order.md#higher-order-programming), [code](https://github.com/sevaivanov/short/blob/master/prolog/higher-order.pl#L1)
 Self-Modifying Code | LMC | [everything](https://github.com/sevaivanov/short/blob/master/assembly/lmc/combine_two_ordered_lists.elmc#L1)
 
-You can [preview](https://sevaivanov.github.io/short/) the web demonstrations.
+Web demonstrations can be viewed on [gh-pages](https://sevaivanov.github.io/small-projects/).
 
 ## License
 
