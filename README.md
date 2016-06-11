@@ -1,4 +1,4 @@
-# Short
+# Small projects
 
 Each directory may contain assignments, demonstrations or modules.
 
