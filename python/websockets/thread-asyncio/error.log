@@ -1,0 +1,13 @@
+Task exception was never retrieved
+future: <Task finished coro=<ChatServer.notify() done, defined at server2.py:21> exception=ConnectionClosed('WebSocket connection is closed: code = 1000, no reason.',)>
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/asyncio/tasks.py", line 239, in _step
+    result = coro.send(None)
+  File "server2.py", line 28, in notify
+    await websocket.send(message)
+  File "/home/rrt/.local/lib/python3.5/site-packages/websockets/protocol.py", line 307, in send
+    yield from self.ensure_open()
+  File "/home/rrt/.local/lib/python3.5/site-packages/websockets/protocol.py", line 391, in ensure_open
+    raise ConnectionClosed(self.close_code, self.close_reason)
+websockets.exceptions.ConnectionClosed: WebSocket connection is closed: code = 1000, no reason.
+KeyboardInterrupt
