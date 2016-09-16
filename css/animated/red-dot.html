@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <style>
+            div#circle
+            {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                margin: auto;
+                width: 10em;
+                height: 10em;
+                border-radius: 50%;
+                background: red;
+            }
+            @keyframes grow
+            {
+                from
+                {
+                    height: 10em;
+                    width: 10em;
+                }
+                to
+                {
+                    height: 10000em;
+                    width: 10000em;
+                }
+            }
+            div#circle:hover
+            {
+                animation-name: grow;
+                animation-duration: 600s;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <div id="circle"></div>
+        </div>
+    </body>
+</html>
