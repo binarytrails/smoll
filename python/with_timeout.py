@@ -2,59 +2,64 @@
 
 #! @author Vsevolod Ivanov seva@tumahn.net
 
-import time
 import threading
 
 class TimeLimitExpired(Exception):
     pass
 
-class Timeout(threading.Thread):
+class Timeout:
 
-    _running = False
+    running = False
+    expired = False
 
-    def __init__(self, seconds, raise_e=False):
-        self.seconds = seconds
+    def __init__(self, raise_e=False):
         self.raise_e = raise_e
 
+    def wait(self, secs):
+        self._event = threading.Event()
+        self.running = True
+
+        success = self._event.wait(secs)
+        if (not success and self.raise_e):
+            raise TimeLimitExpired(secs)
+
+        self.expired = (success is False)
+        self.running = False
+
+    def stop(self):
+        if hasattr(self, '_event'):
+            self._event.set()
+
+class TimeoutThread(threading.Thread):
+
+    def __init__(self, secs):
+        self.secs = secs
+        self.timeout = Timeout()
         threading.Thread.__init__(self)
 
     def run(self):
-        start_time = time.time()
-        self._running = True
-
-        while (self._running):
-            time_diff = time.time() - start_time
-
-            if (time_diff > self.seconds):
-                break
-
-        self.stop()
+        self.timeout.wait(self.secs)
 
     def stop(self):
-        self._running = False
-
-        if (self.raise_e):
-            raise TimeLimitExpired('after {} seconds.'.format(self.seconds))
+        self.timeout.stop()
 
     def active(self):
-        return self._running
+        return self.timeout.running
+
+    def expired(self):
+        return self.timeout.expired()
 
 class run_timeout:
+    """Non blocking in background thread"""
 
-    def __init__(self, seconds, raise_e=True):
-        self.seconds = seconds
-        self.raise_e = raise_e
+    def __init__(self, secs):
+        self.timeout = TimeoutThread(secs)
 
     def __enter__(self):
-        self.timeout = Timeout(self.seconds, self.raise_e)
         self.timeout.start()
         return self.timeout
 
     def __exit__(self, type, value, traceback):
+        self.timeout.stop()
         return True
-
-with run_timeout(0.1) as run:
-
-    while (run.active()):
-        print('Running..')
 
