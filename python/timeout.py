@@ -9,7 +9,7 @@ class TimeLimitExpired(Exception):
 
 class Timeout:
 
-    running = False
+    active = False
     expired = False
 
     def __init__(self, raise_e=False):
@@ -17,14 +17,14 @@ class Timeout:
 
     def wait(self, secs):
         self._event = threading.Event()
-        self.running = True
+        self.active = True
 
         success = self._event.wait(secs)
         if (not success and self.raise_e):
             raise TimeLimitExpired(secs)
 
         self.expired = (success is False)
-        self.running = False
+        self.active = False
 
     def stop(self):
         if hasattr(self, '_event'):
@@ -44,13 +44,13 @@ class TimeoutThread(threading.Thread):
         self.timeout.stop()
 
     def active(self):
-        return self.timeout.running
+        return self.timeout.active
 
     def expired(self):
         return self.timeout.expired()
 
-class run_timeout:
-    """Non blocking in background thread"""
+class run:
+    """With statement using a background Thread"""
 
     def __init__(self, secs):
         self.timeout = TimeoutThread(secs)
