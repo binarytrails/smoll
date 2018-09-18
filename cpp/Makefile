@@ -1,3 +1,6 @@
+pointers:
+	g++ pointers.cpp -o pointers.out
+
 arrays:
 	g++ arrays.cpp -o arrays.out
 
