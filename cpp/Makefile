@@ -4,6 +4,9 @@ pointers:
 arrays:
 	g++ arrays.cpp -o arrays.out
 
+arrays_2d:
+	g++ array_2d.cpp -o arrays_2d.out
+
 graph-enummap:
 	g++ graph/enum_map.cpp -o graph-enummap.out
 
