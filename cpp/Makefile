@@ -15,5 +15,9 @@ glfw_cb_context:
 		-lglfw -lGLEW -lGL -lX11 -lpthread -lXrandr -lXi\
 		glfw_cb_context.cpp -o glfw_cb_context.out
 
+list_files:
+	g++ -std=c++11 -lboost_system -lboost_filesystem \
+		list_files.cpp -o list_files.out
+
 clean:
 	rm -f *.out
