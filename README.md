@@ -12,10 +12,6 @@ Web demos | Web | [preview](https://sevaivanov.github.io/gists/)
 
 Find out more by exploring!
 
-## License
-
-The code is licensed under a [MIT license](LICENSE).
-
 ## Author
 
-Vsevolod (Seva) Ivanov - seva@tumahn.net
+Vsevolod Ivanov - seva@binarytrails.net
