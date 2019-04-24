@@ -1,0 +1,3 @@
+[submodule "cpp/dyad"]
+	path = cpp/dyad
+	url = https://github.com/binarytrails/dyad

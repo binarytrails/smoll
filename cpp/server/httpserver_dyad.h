@@ -6,20 +6,17 @@
 #include <time.h>
 #include "dyad.h"
 
-#include <thread>
-#include <opendht.h>
-
-class DhtProxyServer
+class HttpServer
 {
     public:
-        DhtProxyServer();
-        ~DhtProxyServer();
+        HttpServer();
+        ~HttpServer();
     private:
-        dht::DhtRunner *node;
         dyad_Stream *dyadStream;
 
         void onAccept(dyad_Event *event);
         void onListen(dyad_Event *event);
+        void onData(dyad_Event *event);
         void onLine(dyad_Event *event);
         void onError(dyad_Event *event);
 };
