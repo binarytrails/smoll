@@ -13,8 +13,13 @@ DhtProxyServer::DhtProxyServer() : node(new dht::DhtRunner)
         .flags(Pistache::Tcp::Options::InstallSignalHandler);
     this->restServer.reset(new Pistache::Http::Endpoint(restServerAddr));
     this->restServer->init(opts);
-    this->restServer->setHandler(
-        Pistache::Http::make_handler<DhtProxyServer::HttpHandler>());
+
+    Pistache::Rest::Routes::Get(this->restRouter, "/:name",
+        Pistache::Rest::Routes::bind(&DhtProxyServer::get, this));
+    Pistache::Rest::Routes::Put(this->restRouter, "/:name",
+        Pistache::Rest::Routes::bind(&DhtProxyServer::put, this));
+
+    this->restServer->setHandler(this->restRouter.handler());
 }
 
 DhtProxyServer::~DhtProxyServer()
@@ -26,25 +31,17 @@ void DhtProxyServer::run()
 {
     this->restServer->serve();
 }
-void DhtProxyServer::HttpHandler::onRequest(
-    const Pistache::Http::Request& request,
-    Pistache::Http::ResponseWriter response
-){
-    if (request.resource() == "/node")
-    {
-        if (request.method() == Pistache::Http::Method::Get)
-        {
-            response.send(Pistache::Http::Code::Ok, "Getting node data");
-        }
-        else if (request.method() == Pistache::Http::Method::Put)
-        {
-            response.send(Pistache::Http::Code::Ok, request.body(), MIME(Text, Plain));
-        }
-    }
-    else
-    {
-        response.send(Pistache::Http::Code::Not_Found);
-    }
+
+void DhtProxyServer::get(const Pistache::Http::Request& request,
+                         Pistache::Http::ResponseWriter response)
+{
+    response.send(Pistache::Http::Code::Ok, "Getting node data");
+}
+
+void DhtProxyServer::put(const Pistache::Http::Request& request,
+                          Pistache::Http::ResponseWriter response)
+{
+    response.send(Pistache::Http::Code::Ok, request.body(), MIME(Text, Plain));
 }
 
 int main(int argc, char *argv[])
