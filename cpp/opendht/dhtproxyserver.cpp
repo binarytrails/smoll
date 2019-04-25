@@ -14,9 +14,9 @@ DhtProxyServer::DhtProxyServer() : node(new dht::DhtRunner)
     this->restServer.reset(new Pistache::Http::Endpoint(restServerAddr));
     this->restServer->init(opts);
 
-    Pistache::Rest::Routes::Get(this->restRouter, "/:name",
+    Pistache::Rest::Routes::Get(this->restRouter, "/:hash",
         Pistache::Rest::Routes::bind(&DhtProxyServer::get, this));
-    Pistache::Rest::Routes::Put(this->restRouter, "/:name",
+    Pistache::Rest::Routes::Put(this->restRouter, "/:hash",
         Pistache::Rest::Routes::bind(&DhtProxyServer::put, this));
 
     this->restServer->setHandler(this->restRouter.handler());
@@ -32,13 +32,32 @@ void DhtProxyServer::run()
     this->restServer->serve();
 }
 
-void DhtProxyServer::get(const Pistache::Http::Request& request,
+void DhtProxyServer::get(const Pistache::Rest::Request& request,
                          Pistache::Http::ResponseWriter response)
 {
-    response.send(Pistache::Http::Code::Ok, "Getting node data");
+    auto hash = request.param(":hash").as<std::string>();
+    dht::InfoHash infoHash(hash);
+    if (!infoHash)
+        infoHash = dht::InfoHash::get(hash);
+
+    // TODO more efficient example using get() callbacks
+    //      however, it needs kept alive pistache session
+    auto values = node->get(infoHash).get();
+
+    dht::Blob blob;
+    std::string data;
+    for (std::vector<std::shared_ptr<dht::Value>>::iterator it = values.begin();
+         it != values.end(); ++it
+    ){
+        blob = (*it)->data;
+        std::string value = std::string(blob.begin(), blob.end());
+        data.append(value);
+        data.append(",");
+    }
+    response.send(Pistache::Http::Code::Ok, data.c_str());
 }
 
-void DhtProxyServer::put(const Pistache::Http::Request& request,
+void DhtProxyServer::put(const Pistache::Rest::Request& request,
                           Pistache::Http::ResponseWriter response)
 {
     response.send(Pistache::Http::Code::Ok, request.body(), MIME(Text, Plain));

@@ -2,8 +2,12 @@
 
 #include <pistache/endpoint.h>
 #include <pistache/router.h>
+
 #include <opendht.h>
-#include <json/json.h>
+#include <string>
+#include <chrono>
+#include <condition_variable>
+//#include <json/json.h>
 
 class DhtProxyServer
 {
@@ -13,9 +17,9 @@ class DhtProxyServer
 
         void run();
 
-        void get(const Pistache::Http::Request& request,
+        void get(const Pistache::Rest::Request& request,
                        Pistache::Http::ResponseWriter response);
-        void put(const Pistache::Http::Request& request,
+        void put(const Pistache::Rest::Request& request,
                        Pistache::Http::ResponseWriter response);
 
         std::shared_ptr<dht::DhtRunner> node;
