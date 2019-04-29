@@ -1,6 +1,6 @@
 // Vsevolod Ivanov
 
-#include "dhtproxyserver.h"
+#include "proxy_pistache.h"
 
 DhtProxyServer::DhtProxyServer() : node(new dht::DhtRunner)
 {
