@@ -7,7 +7,7 @@ using RestRouter = restinio::router::express_router_t<>;
 using RestRouteTraits = restinio::traits_t<
     restinio::asio_timer_manager_t,
     restinio::single_threaded_ostream_logger_t,
-RestRouter >;
+    RestRouter>;
 
 class DhtProxyServer
 {
@@ -23,5 +23,6 @@ class DhtProxyServer
 
     private:
         std::shared_ptr<dht::DhtRunner> node;
-        std::unique_ptr<RestRouter> restRouter;
+
+        std::unique_ptr<RestRouter> createRestRouter();
 };
