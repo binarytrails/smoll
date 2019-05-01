@@ -12,5 +12,12 @@ proxy_cpr:
 		-lcpr -I/usr/include/cpr -lmongoose -I/usr/include \
 		-lopendht -lgnutls -I/usr/include/opendht \
 		-o proxy_cpr.out
+
+proxy_restinio:
+	g++ dhtproxyserver/proxy_restinio.cpp -std=c++14 -I./dhtproxyserver \
+		-I/usr/local/include/restinio -lfmt -lpthread -lhttp_parser \
+		-lopendht -lgnutls -I/usr/include/opendht \
+		-o proxy_restinio.out
+
 clean:
 	rm -f *.out
