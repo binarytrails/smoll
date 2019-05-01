@@ -1,22 +1,29 @@
+#! @file
+#! @author Vsevolod Ivanov
+
+CXX=g++
+CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g \
+		-lopendht -lgnutls -I/usr/include/opendht \
+
 putget:
-	g++ putget.cpp -std=c++11 -lopendht -lgnutls -o putget.out
+	${CXX} ${CXXFLAGS} -std=c++11 putget.cpp -o putget.out
 
 proxy_pistache:
-	g++ dhtproxyserver/proxy_pistache.cpp -std=c++11 -I./dhtproxyserver \
+	${CXX} ${CXXFLAGS} -std=c++11 \
+		dhtproxyserver/proxy_pistache.cpp -I./dhtproxyserver \
 		-lpistache -I/usr/include/pistache \
-		-lopendht -lgnutls -I/usr/include/opendht \
 		-o proxy_pistache.out
 
 proxy_cpr:
-	g++ dhtproxyserver/proxy_cpr.cpp -std=c++11 -I./dhtproxyserver \
+	${CXX} ${CXXFLAGS} -std=c++11 \
+		dhtproxyserver/proxy_cpr.cpp -I./dhtproxyserver \
 		-lcpr -I/usr/include/cpr -lmongoose -I/usr/include \
-		-lopendht -lgnutls -I/usr/include/opendht \
 		-o proxy_cpr.out
 
 proxy_restinio:
-	g++ dhtproxyserver/proxy_restinio.cpp -std=c++14 -I./dhtproxyserver \
+	${CXX} ${CXXFLAGS} -std=c++14 \
+		dhtproxyserver/proxy_restinio.cpp -I./dhtproxyserver \
 		-I/usr/local/include/restinio -lfmt -lpthread -lhttp_parser \
-		-lopendht -lgnutls -I/usr/include/opendht \
 		-o proxy_restinio.out
 
 clean:
