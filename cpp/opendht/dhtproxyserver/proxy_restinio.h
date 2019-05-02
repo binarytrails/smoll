@@ -1,6 +1,10 @@
 // Vsevolod Ivanov
 
+#include <chrono>
+#include <condition_variable>
+#include <json/json.h>
 #include <opendht.h>
+#include <opendht/value.h>
 #include <restinio/all.hpp>
 
 using RestRouter = restinio::router::express_router_t<>;
@@ -23,6 +27,7 @@ class DhtProxyServer
 
     private:
         std::shared_ptr<dht::DhtRunner> node;
+        Json::StreamWriterBuilder jsonBuilder;
 
         std::unique_ptr<RestRouter> createRestRouter();
 };

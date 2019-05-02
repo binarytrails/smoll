@@ -6,6 +6,9 @@ DhtProxyServer::DhtProxyServer(): node(new dht::DhtRunner)
 {
     this->node->run(4444, dht::crypto::generateIdentity(), true);
     this->node->bootstrap("bootstrap.jami.net", "4222");
+
+    jsonBuilder["commentStyle"] = "None";
+    jsonBuilder["indentation"] = "";
 }
 
 DhtProxyServer::~DhtProxyServer()
@@ -49,7 +52,31 @@ DhtProxyServer::get(restinio::request_handle_t request,
                     restinio::router::route_params_t params)
 {
     auto response = request->create_response();
-    response.append_body(params["hash"]);
+
+    dht::InfoHash infoHash(params["hash"].to_string());
+    if (!infoHash)
+        infoHash = dht::InfoHash::get(params["hash"].to_string());
+
+    std::mutex done_mutex;
+    std::condition_variable done_cv;
+    std::unique_lock<std::mutex> done_lock(done_mutex);
+
+    this->node->get(infoHash, [&](const dht::Sp<dht::Value>& value){
+        std::string str = std::string(value->data.begin(),value->data.end());
+        Json::Value val;
+        val["data"] = str.c_str();
+        val["id"] = std::to_string(value->id);
+        auto output = Json::writeString(jsonBuilder, val) + "\n";
+        // FIXME use internal dht json builders
+        //auto output = Json::writeString(jsonBuilder, value->toJson());
+        response.append_body(output);
+        return true;
+    }, [&] (bool /*ok*/){
+        std::cout << "done" << std::endl;
+        done_cv.notify_all();
+    });
+
+    done_cv.wait_for(done_lock, std::chrono::seconds(10));
     return response.done();
 }
 
