@@ -62,13 +62,7 @@ DhtProxyServer::get(restinio::request_handle_t request,
     std::unique_lock<std::mutex> done_lock(done_mutex);
 
     this->node->get(infoHash, [&](const dht::Sp<dht::Value>& value){
-        std::string str = std::string(value->data.begin(),value->data.end());
-        Json::Value val;
-        val["data"] = str.c_str();
-        val["id"] = std::to_string(value->id);
-        auto output = Json::writeString(jsonBuilder, val) + "\n";
-        // FIXME use internal dht json builders
-        //auto output = Json::writeString(jsonBuilder, value->toJson());
+        auto output = Json::writeString(jsonBuilder, value->toJson()) + "\n";
         response.append_body(output);
         return true;
     }, [&] (bool /*ok*/){

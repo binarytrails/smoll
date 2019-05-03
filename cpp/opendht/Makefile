@@ -4,6 +4,7 @@
 CXX=g++
 CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g \
 		-lopendht -lgnutls -ljsoncpp -I/usr/include/opendht \
+		-DOPENDHT_JSONCPP
 
 putget:
 	${CXX} ${CXXFLAGS} -std=c++11 putget.cpp -o putget.out
