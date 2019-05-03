@@ -7,7 +7,7 @@
 #include <restinio/all.hpp>
 
 using RestRouter = restinio::router::express_router_t<>;
-using RestRouteTraits = restinio::traits_t<
+using RestRouterTraits = restinio::traits_t<
     restinio::asio_timer_manager_t,
     restinio::single_threaded_ostream_logger_t,
     RestRouter>;

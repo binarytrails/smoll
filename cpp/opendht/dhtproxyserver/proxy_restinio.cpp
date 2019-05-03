@@ -1,4 +1,12 @@
-// Vsevolod Ivanov
+/* Vsevolod Ivanov
+ *
+ * TODO:
+ *  - default headers for each response
+ *  - settings in constructor
+ *  - set connection timeout
+ *  - implement sessions
+ *  - threading with asio
+ */
 
 #include "proxy_restinio.h"
 
@@ -9,7 +17,6 @@ DhtProxyServer::DhtProxyServer(): node(new dht::DhtRunner)
 
     jsonBuilder["commentStyle"] = "None";
     jsonBuilder["indentation"] = "";
-    // TODO settings definition: content-type, connection, access-control
 }
 
 DhtProxyServer::~DhtProxyServer()
@@ -34,14 +41,15 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
 int DhtProxyServer::run()
 {
     using namespace std::chrono;
+    auto settings = restinio::on_this_thread<RestRouterTraits>();
+    settings.address("0.0.0.0");
+    settings.port(8080);
+    settings.request_handler(this->createRestRouter());
+    settings.read_next_http_message_timelimit(10s);
+    settings.write_http_response_timelimit(1s);
+    settings.handle_request_timeout(1s);
     try {
-        restinio::run(
-            restinio::on_this_thread<RestRouteTraits>()
-                .address("0.0.0.0") .port(8080)
-                .request_handler(this->createRestRouter())
-                .read_next_http_message_timelimit(10s)
-                .write_http_response_timelimit(1s)
-                .handle_request_timeout(1s));
+        restinio::run(std::move(settings));
     }
     catch(const std::exception &ex)
     {
@@ -66,6 +74,11 @@ request_status DhtProxyServer::getNodeInfo(
     auto output = Json::writeString(this->jsonBuilder, result) + "\n";
 
     auto response = request->create_response();
+    // default headers {
+    response.append_header(restinio::http_field::content_type, "application/json");
+    response.append_header(restinio::http_field::access_control_allow_origin, "*");
+    response.connection_keep_alive();
+    // }
     response.append_body(output);
     return response.done();
 }
