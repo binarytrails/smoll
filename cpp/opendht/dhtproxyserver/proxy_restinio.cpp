@@ -62,6 +62,7 @@ int DhtProxyServer::run()
 request_status DhtProxyServer::getNodeInfo(
     restinio::request_handle_t request, restinio::router::route_params_t params)
 {
+    std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
     Json::Value result;
     std::lock_guard<std::mutex> lck(statsMutex);
     if (this->nodeInfo.ipv4.good_nodes == 0 &&
@@ -86,6 +87,7 @@ request_status DhtProxyServer::getNodeInfo(
 request_status DhtProxyServer::get(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
+    std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
     auto response = request->create_response();
 
     dht::InfoHash infoHash(params["hash"].to_string());
@@ -101,7 +103,6 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
         response.append_body(output);
         return true;
     }, [&] (bool /*ok*/){
-        std::cout << "done" << std::endl;
         done_cv.notify_all();
     });
 
@@ -112,15 +113,16 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
 request_status DhtProxyServer::put(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
-
+    std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
     int content_length = request->header().content_length();
     dht::InfoHash infoHash(params["hash"].to_string());
     if (!infoHash)
         infoHash = dht::InfoHash::get(params["hash"].to_string());
 
+    std::cout << "request body: " << request->body() << std::endl;
     if (request->body().empty()) {
         auto response = request->create_response(restinio::status_bad_request());
-        response.set_body(this->RESPONSE_MISSING_PARAMS);
+        response.set_body(this->RESP_MSG_MISSING_PARAMS);
         return response.done();
     }
 
@@ -130,20 +132,38 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
     auto* char_data = reinterpret_cast<const char*>(request->body().data());
     auto reader = std::unique_ptr<Json::CharReader>(rbuilder.newCharReader());
 
-    /*
-    if (reader->parse(char_data, char_data + b.size(), &root, &err)) {
-        // Build the Value from json
-        auto value = std::make_shared<Value>(root);
+    if (reader->parse(char_data, char_data + request->body().size(), &root, &err)){
+        // build the Value from json
+        auto value = std::make_shared<dht::Value>(root);
         bool permanent = root.isMember("permanent");
         std::cout << "Got put " << infoHash << " " << *value <<
                      " " << (permanent ? "permanent" : "") << std::endl;
-        if (permanent) {
+        /*
+        if (permanent){
         }
+        else {
+        }
+        */
+        this->node->put(infoHash, value, [this, value, request](bool ok){
+            if (ok){
+                Json::StreamWriterBuilder wbuilder;
+                wbuilder["commentStyle"] = "None";
+                wbuilder["indentation"] = "";
+                auto output = Json::writeString(this->jsonBuilder,
+                                                value->toJson()) + "\n";
+                auto response = request->create_response();
+                response.append_body(output);
+            }
+            else {
+                auto response = request->create_response(restinio::status_bad_gateway());
+                response.set_body(this->RESP_MSG_PUT_FAILED);
+                return response.done();
+            }
+        });
     }
-    */
 
     auto response = request->create_response();
-    response.append_body(std::to_string(content_length));
+    response.append_body("Content-Length: " + std::to_string(content_length) + "\n");
     return response.done();
 }
 

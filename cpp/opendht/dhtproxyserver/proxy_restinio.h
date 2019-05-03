@@ -29,7 +29,8 @@ class DhtProxyServer
                            restinio::router::route_params_t params);
 
     private:
-        const std::string RESPONSE_MISSING_PARAMS = "{\"err\":\"Missing parameters\"}";
+        const std::string RESP_MSG_MISSING_PARAMS = "{\"err\":\"Missing parameters\"}";
+        const std::string RESP_MSG_PUT_FAILED = "{\"err\":\"Put failed\"}";
 
         std::shared_ptr<dht::DhtRunner> node;
         Json::StreamWriterBuilder jsonBuilder;
