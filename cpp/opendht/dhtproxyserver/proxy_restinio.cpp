@@ -23,6 +23,8 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
     using namespace std::placeholders;
     restRouter->http_get("/:hash",
                          std::bind(&DhtProxyServer::get, this, _1, _2));
+    restRouter->http_put("/:hash",
+                         std::bind(&DhtProxyServer::put, this, _1, _2));
     return restRouter;
 }
 
@@ -47,9 +49,8 @@ int DhtProxyServer::run()
     return 0;
 }
 
-restinio::request_handling_status_t
-DhtProxyServer::get(restinio::request_handle_t request,
-                    restinio::router::route_params_t params)
+request_status DhtProxyServer::get(restinio::request_handle_t request,
+                                   restinio::router::route_params_t params)
 {
     auto response = request->create_response();
 
@@ -74,7 +75,21 @@ DhtProxyServer::get(restinio::request_handle_t request,
     return response.done();
 }
 
-int main(int argc, char* argv[])
+request_status DhtProxyServer::put(restinio::request_handle_t request,
+                                   restinio::router::route_params_t params)
+{
+    auto response = request->create_response();
+
+    dht::InfoHash infoHash(params["hash"].to_string());
+    if (!infoHash)
+        infoHash = dht::InfoHash::get(params["hash"].to_string());
+
+    response.append_body("wip implementation");
+
+    return response.done();
+}
+
+int main()
 {
     DhtProxyServer dhtproxy;
     int error_status = dhtproxy.run();
