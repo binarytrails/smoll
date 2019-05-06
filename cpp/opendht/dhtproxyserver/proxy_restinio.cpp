@@ -32,6 +32,9 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
         catch(const std::exception &ex) {
             std::cerr << "Error: " << ex.what() << std::endl;
         }
+        catch(const restinio::exception_t &ex) {
+            std::cerr << "Error: " << ex.what() << std::endl;
+        }
     });
 }
 
@@ -120,13 +123,18 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
     if (!infoHash)
         infoHash = dht::InfoHash::get(params["hash"].to_string());
 
-    std::cout << "request body: " << request->body() << std::endl;
     if (request->body().empty()) {
         auto response = this->initHttpResponse(
             request->create_response(restinio::status_bad_request()));
         response.set_body(this->RESP_MSG_MISSING_PARAMS);
         return response.done();
     }
+
+    bool putSuccess;
+    std::string output;
+    std::mutex done_mutex;
+    std::condition_variable done_cv;
+    std::unique_lock<std::mutex> done_lock(done_mutex);
 
     std::string err;
     Json::Value root;
@@ -135,7 +143,7 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
     auto reader = std::unique_ptr<Json::CharReader>(rbuilder.newCharReader());
 
     if (reader->parse(char_data, char_data + request->body().size(), &root, &err)){
-        // build the Value from json
+        // Build the dht::Value from json, NOTE: {"data": "base64value", ...}
         auto value = std::make_shared<dht::Value>(root);
         bool permanent = root.isMember("permanent");
         std::cout << "Got put " << infoHash << " " << *value <<
@@ -146,27 +154,29 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
         else {
         }
         */
-        this->dhtNode->put(infoHash, value, [this, value, request](bool ok){
+        this->dhtNode->put(infoHash, value,
+          //done callback
+          [this, value, &putSuccess, &output](bool ok){
+            putSuccess = ok;
             if (ok){
                 Json::StreamWriterBuilder wbuilder;
                 wbuilder["commentStyle"] = "None";
                 wbuilder["indentation"] = "";
-                auto output = Json::writeString(this->jsonBuilder,
-                                                value->toJson()) + "\n";
-                auto response = this->initHttpResponse(request->create_response());
-                response.append_body(output);
+                output = Json::writeString(this->jsonBuilder, value->toJson()) + "\n";
+                std::cout << output << std::endl;
             }
-            else {
-                auto response = this->initHttpResponse(
-                    request->create_response(restinio::status_bad_gateway()));
-                response.set_body(this->RESP_MSG_PUT_FAILED);
-                return response.done();
-            }
-        });
+        }, dht::time_point::max(), permanent);
     }
+    done_cv.wait_for(done_lock, std::chrono::seconds(10));
 
+    if (!putSuccess){
+        auto response = this->initHttpResponse(
+            request->create_response(restinio::status_bad_gateway()));
+        response.set_body(this->RESP_MSG_PUT_FAILED);
+        return response.done();
+    }
     auto response = this->initHttpResponse(request->create_response());
-    response.append_body("Content-Length: " + std::to_string(content_length) + "\n");
+    response.append_body(output);
     return response.done();
 }
 
