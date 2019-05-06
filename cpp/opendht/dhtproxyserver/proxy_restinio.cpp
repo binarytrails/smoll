@@ -9,18 +9,38 @@
 
 #include "proxy_restinio.h"
 
-DhtProxyServer::DhtProxyServer(): node(new dht::DhtRunner)
+DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
+                               in_port_t port):
+    dhtNode(dhtNode)
 {
-    this->node->run(4444, dht::crypto::generateIdentity(), true);
-    this->node->bootstrap("bootstrap.jami.net", "4222");
+    this->jsonBuilder["commentStyle"] = "None";
+    this->jsonBuilder["indentation"] = "";
 
-    jsonBuilder["commentStyle"] = "None";
-    jsonBuilder["indentation"] = "";
+    this->serverThread = std::thread([this, port](){
+        using namespace std::chrono;
+        auto maxThreads = std::thread::hardware_concurrency() - 1;
+        auto restThreads = maxThreads > 1 ? maxThreads : 1;
+        printf("Running on restinio on %i threads\n", restThreads);
+        auto settings = restinio::on_thread_pool<RestRouterTraits>(restThreads);
+        settings.address("0.0.0.0");
+        settings.port(port);
+        settings.request_handler(this->createRestRouter());
+        settings.read_next_http_message_timelimit(10s);
+        settings.write_http_response_timelimit(1s);
+        settings.handle_request_timeout(1s);
+        try {
+            restinio::run(std::move(settings));
+        }
+        catch(const std::exception &ex) {
+            std::cerr << "Error: " << ex.what() << std::endl;
+        }
+    });
 }
 
 DhtProxyServer::~DhtProxyServer()
 {
-    this->node->join();
+    if (this->serverThread.joinable())
+        this->dhtNode->join();
 }
 
 std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
@@ -37,41 +57,17 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
     return restRouter;
 }
 
-int DhtProxyServer::run()
-{
-    using namespace std::chrono;
-    auto maxThreads = std::thread::hardware_concurrency() - 1;
-    auto restThreads = maxThreads > 1 ? maxThreads : 1;
-    printf("Running on restinio on %i threads", restThreads);
-    auto settings = restinio::on_thread_pool<RestRouterTraits>(restThreads);
-    settings.address("0.0.0.0");
-    settings.port(8080);
-    settings.request_handler(this->createRestRouter());
-    settings.read_next_http_message_timelimit(10s);
-    settings.write_http_response_timelimit(1s);
-    settings.handle_request_timeout(1s);
-    try {
-        restinio::run(std::move(settings));
-    }
-    catch(const std::exception &ex)
-    {
-        std::cerr << "Error: " << ex.what() << std::endl;
-        return 1;
-    }
-    return 0;
-}
-
 request_status DhtProxyServer::getNodeInfo(
     restinio::request_handle_t request, restinio::router::route_params_t params)
 {
     std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
     Json::Value result;
     std::lock_guard<std::mutex> lck(statsMutex);
-    if (this->nodeInfo.ipv4.good_nodes == 0 &&
-        this->nodeInfo.ipv6.good_nodes == 0){
-        nodeInfo = node->getNodeInfo();
+    if (this->dhtNodeInfo.ipv4.good_nodes == 0 &&
+        this->dhtNodeInfo.ipv6.good_nodes == 0){
+        this->dhtNodeInfo = this->dhtNode->getNodeInfo();
     }
-    result = this->nodeInfo.toJson();
+    result = this->dhtNodeInfo.toJson();
     // [ipv6:ipv4]:port or ipv4:port
     result["public_ip"] = request->remote_endpoint().address().to_string();
     auto output = Json::writeString(this->jsonBuilder, result) + "\n";
@@ -100,8 +96,8 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
     std::condition_variable done_cv;
     std::unique_lock<std::mutex> done_lock(done_mutex);
 
-    this->node->get(infoHash, [&](const dht::Sp<dht::Value>& value){
-        auto output = Json::writeString(jsonBuilder, value->toJson()) + "\n";
+    this->dhtNode->get(infoHash, [&](const dht::Sp<dht::Value>& value){
+        auto output = Json::writeString(this->jsonBuilder, value->toJson()) + "\n";
         response.append_body(output);
         return true;
     }, [&] (bool /*ok*/){
@@ -146,7 +142,7 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
         else {
         }
         */
-        this->node->put(infoHash, value, [this, value, request](bool ok){
+        this->dhtNode->put(infoHash, value, [this, value, request](bool ok){
             if (ok){
                 Json::StreamWriterBuilder wbuilder;
                 wbuilder["commentStyle"] = "None";
@@ -171,7 +167,13 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
 
 int main()
 {
-    DhtProxyServer dhtproxy;
-    int error_status = dhtproxy.run();
-    return error_status;
+    auto dhtNode = std::make_shared<dht::DhtRunner>();
+    dhtNode->run(4444, dht::crypto::generateIdentity(), true);
+    dhtNode->bootstrap("bootstrap.jami.net", "4222");
+
+    DhtProxyServer dhtproxy {dhtNode, 8080};
+
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    };
 }
