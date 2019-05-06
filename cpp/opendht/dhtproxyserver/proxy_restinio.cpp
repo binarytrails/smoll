@@ -5,7 +5,6 @@
  *  - settings in constructor
  *  - set connection timeout
  *  - implement sessions
- *  - threading with asio
  */
 
 #include "proxy_restinio.h"
@@ -41,7 +40,10 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
 int DhtProxyServer::run()
 {
     using namespace std::chrono;
-    auto settings = restinio::on_this_thread<RestRouterTraits>();
+    auto maxThreads = std::thread::hardware_concurrency() - 1;
+    auto restThreads = maxThreads > 1 ? maxThreads : 1;
+    printf("Running on restinio on %i threads", restThreads);
+    auto settings = restinio::on_thread_pool<RestRouterTraits>(restThreads);
     settings.address("0.0.0.0");
     settings.port(8080);
     settings.request_handler(this->createRestRouter());
