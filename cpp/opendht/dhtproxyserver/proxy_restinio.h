@@ -23,6 +23,8 @@ class DhtProxyServer
         template <typename HttpResponse>
         HttpResponse initHttpResponse(HttpResponse response);
 
+        request_status options(restinio::request_handle_t request,
+                               restinio::router::route_params_t params);
         request_status getNodeInfo(restinio::request_handle_t request,
                                    restinio::router::route_params_t params);
         request_status get(restinio::request_handle_t request,
@@ -40,6 +42,7 @@ class DhtProxyServer
 
         mutable std::mutex statsMutex;
         mutable dht::NodeInfo dhtNodeInfo {};
+        mutable std::atomic<size_t> requestCount {0};
 
         std::unique_ptr<RestRouter> createRestRouter();
 };

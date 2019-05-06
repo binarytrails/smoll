@@ -46,16 +46,14 @@ DhtProxyServer::~DhtProxyServer()
 
 std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
 {
-    auto restRouter = std::make_unique<RestRouter>();
-
     using namespace std::placeholders;
-    restRouter->http_get("/",
-                         std::bind(&DhtProxyServer::getNodeInfo, this, _1, _2));
-    restRouter->http_get("/:hash",
-                         std::bind(&DhtProxyServer::get, this, _1, _2));
-    restRouter->http_put("/:hash",
-                         std::bind(&DhtProxyServer::put, this, _1, _2));
-    return restRouter;
+    auto router = std::make_unique<RestRouter>();
+    router->add_handler(restinio::http_method_t::http_options,
+                        "/:hash", std::bind(&DhtProxyServer::options, this, _1, _2));
+    router->http_get("/", std::bind(&DhtProxyServer::getNodeInfo, this, _1, _2));
+    router->http_get("/:hash", std::bind(&DhtProxyServer::get, this, _1, _2));
+    router->http_put("/:hash", std::bind(&DhtProxyServer::put, this, _1, _2));
+    return router;
 }
 
 template <typename HttpResponse>
@@ -66,6 +64,22 @@ HttpResponse DhtProxyServer::initHttpResponse(HttpResponse response)
     response.append_header(restinio::http_field::access_control_allow_origin, "*");
     response.connection_keep_alive();
     return response;
+}
+
+request_status DhtProxyServer::options(restinio::request_handle_t request,
+                                       restinio::router::route_params_t params)
+{
+    this->requestCount++;
+#ifdef OPENDHT_PROXY_SERVER_IDENTITY
+    const auto methods = "OPTIONS, GET, POST, LISTEN, SIGN, ENCRYPT";
+#else
+    const auto methods = "OPTIONS, GET, POST, LISTEN";
+#endif
+    auto response = initHttpResponse(request->create_response());
+    response.append_header(restinio::http_field::access_control_allow_methods, methods);
+    response.append_header(restinio::http_field::access_control_allow_headers, "content-type");
+    response.append_header(restinio::http_field::access_control_max_age, "86400");
+    return response.done();
 }
 
 request_status DhtProxyServer::getNodeInfo(
