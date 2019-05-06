@@ -20,6 +20,9 @@ class DhtProxyServer
                        in_port_t port = 8000);
         ~DhtProxyServer();
 
+        template <typename HttpResponse>
+        HttpResponse initHttpResponse(HttpResponse response);
+
         request_status getNodeInfo(restinio::request_handle_t request,
                                    restinio::router::route_params_t params);
         request_status get(restinio::request_handle_t request,

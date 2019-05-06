@@ -1,8 +1,6 @@
 /* Vsevolod Ivanov
  *
  * TODO:
- *  - default headers for each response
- *  - settings in constructor
  *  - set connection timeout
  *  - implement sessions
  */
@@ -57,10 +55,20 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
     return restRouter;
 }
 
+template <typename HttpResponse>
+HttpResponse DhtProxyServer::initHttpResponse(HttpResponse response)
+{
+    response.append_header("Server", "RESTinio");
+    response.append_header(restinio::http_field::content_type, "application/json");
+    response.append_header(restinio::http_field::access_control_allow_origin, "*");
+    response.connection_keep_alive();
+    return response;
+}
+
 request_status DhtProxyServer::getNodeInfo(
     restinio::request_handle_t request, restinio::router::route_params_t params)
 {
-    std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
+    printf("Connection Id: %lu\n", request->connection_id());
     Json::Value result;
     std::lock_guard<std::mutex> lck(statsMutex);
     if (this->dhtNodeInfo.ipv4.good_nodes == 0 &&
@@ -72,12 +80,7 @@ request_status DhtProxyServer::getNodeInfo(
     result["public_ip"] = request->remote_endpoint().address().to_string();
     auto output = Json::writeString(this->jsonBuilder, result) + "\n";
 
-    auto response = request->create_response();
-    // default headers {
-    response.append_header(restinio::http_field::content_type, "application/json");
-    response.append_header(restinio::http_field::access_control_allow_origin, "*");
-    response.connection_keep_alive();
-    // }
+    auto response = this->initHttpResponse(request->create_response());
     response.append_body(output);
     return response.done();
 }
@@ -85,8 +88,8 @@ request_status DhtProxyServer::getNodeInfo(
 request_status DhtProxyServer::get(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
-    std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
-    auto response = request->create_response();
+    printf("Connection Id: %lu\n", request->connection_id());
+    auto response = this->initHttpResponse(request->create_response());
 
     dht::InfoHash infoHash(params["hash"].to_string());
     if (!infoHash)
@@ -111,7 +114,7 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
 request_status DhtProxyServer::put(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
-    std::cout << "conn id:" << std::to_string(request->connection_id()) << std::endl;
+    printf("Connection Id: %lu\n", request->connection_id());
     int content_length = request->header().content_length();
     dht::InfoHash infoHash(params["hash"].to_string());
     if (!infoHash)
@@ -119,7 +122,8 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
 
     std::cout << "request body: " << request->body() << std::endl;
     if (request->body().empty()) {
-        auto response = request->create_response(restinio::status_bad_request());
+        auto response = this->initHttpResponse(
+            request->create_response(restinio::status_bad_request()));
         response.set_body(this->RESP_MSG_MISSING_PARAMS);
         return response.done();
     }
@@ -149,18 +153,19 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
                 wbuilder["indentation"] = "";
                 auto output = Json::writeString(this->jsonBuilder,
                                                 value->toJson()) + "\n";
-                auto response = request->create_response();
+                auto response = this->initHttpResponse(request->create_response());
                 response.append_body(output);
             }
             else {
-                auto response = request->create_response(restinio::status_bad_gateway());
+                auto response = this->initHttpResponse(
+                    request->create_response(restinio::status_bad_gateway()));
                 response.set_body(this->RESP_MSG_PUT_FAILED);
                 return response.done();
             }
         });
     }
 
-    auto response = request->create_response();
+    auto response = this->initHttpResponse(request->create_response());
     response.append_body("Content-Length: " + std::to_string(content_length) + "\n");
     return response.done();
 }
@@ -172,7 +177,6 @@ int main()
     dhtNode->bootstrap("bootstrap.jami.net", "4222");
 
     DhtProxyServer dhtproxy {dhtNode, 8080};
-
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     };
