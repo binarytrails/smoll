@@ -10,11 +10,11 @@ using router_traits = restinio::traits_t<
 rest_router>;
 using request_status = restinio::request_handling_status_t;
 
-class User
+class Server
 {
     public:
-        User(const int port);
-        ~User();
+        Server(const int port);
+        ~Server();
 
         template <typename http_resp>
         http_resp init_http_resp(http_resp response);
@@ -27,7 +27,7 @@ class User
         std::unique_ptr<rest_router> router();
 };
 
-User::User(const int port)
+Server::Server(const int port)
 {
     this->serverThread = std::thread([this, port](){
         using namespace std::chrono;
@@ -52,20 +52,20 @@ User::User(const int port)
     });
 }
 
-User::~User()
+Server::~Server()
 {
 }
 
-std::unique_ptr<rest_router> User::router()
+std::unique_ptr<rest_router> Server::router()
 {
     using namespace std::placeholders;
     auto router = std::make_unique<rest_router>();
-    router->http_get("/", std::bind(&User::get, this, _1, _2));
+    router->http_get("/", std::bind(&Server::get, this, _1, _2));
     return router;
 }
 
 template <typename http_resp>
-http_resp User::init_http_resp(http_resp response)
+http_resp Server::init_http_resp(http_resp response)
 {
     response.append_header("Server", "RESTinio");
     response.append_header(restinio::http_field::access_control_allow_origin, "*");
@@ -73,7 +73,7 @@ http_resp User::init_http_resp(http_resp response)
     return response;
 }
 
-request_status User::get(restinio::request_handle_t request,
+request_status Server::get(restinio::request_handle_t request,
                          restinio::router::route_params_t params)
 {
     printf("connection_id: %lu\n", request->connection_id());
@@ -100,7 +100,7 @@ request_status User::get(restinio::request_handle_t request,
 
 int main()
 {
-    User user {8080};
+    Server server {8080};
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     };

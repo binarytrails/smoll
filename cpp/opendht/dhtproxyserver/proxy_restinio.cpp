@@ -26,13 +26,18 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
         settings.read_next_http_message_timelimit(10s);
         settings.write_http_response_timelimit(1s);
         settings.handle_request_timeout(1s);
+        /*
+        settings.socket_options_setter([](auto & options){
+            options.set_option(asio::ip::tcp::no_delay{true});
+        });
+        */
         try {
             restinio::run(std::move(settings));
         }
-        catch(const std::exception &ex) {
+        catch(const restinio::exception_t &ex) {
             std::cerr << "Error: " << ex.what() << std::endl;
         }
-        catch(const restinio::exception_t &ex) {
+        catch(const std::exception &ex) {
             std::cerr << "Error: " << ex.what() << std::endl;
         }
     });
@@ -106,25 +111,50 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
     printf("Connection Id: %lu\n", request->connection_id());
-    auto response = this->initHttpResponse(request->create_response());
 
     dht::InfoHash infoHash(params["hash"].to_string());
     if (!infoHash)
         infoHash = dht::InfoHash::get(params["hash"].to_string());
 
+    int valuesToSend = 0;
+    bool done_cb = false;
     std::mutex done_mutex;
     std::condition_variable done_cv;
-    std::unique_lock<std::mutex> done_lock(done_mutex);
 
-    this->dhtNode->get(infoHash, [&](const dht::Sp<dht::Value>& value){
+    //using output_t = restinio::chunked_output_t;
+    using output_t = restinio::user_controlled_output_t;
+    auto response = this->initHttpResponse(request->create_response<output_t>());
+    response.flush();
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    printf("Response part size initially = %i\n", response.parts_size());
+
+    this->dhtNode->get(infoHash, [this, &valuesToSend, &response](const dht::Sp<dht::Value>& value){
+        valuesToSend++;
+        printf("ValuesToSend=%i\n", valuesToSend);
+
         auto output = Json::writeString(this->jsonBuilder, value->toJson()) + "\n";
-        response.append_body(output);
+        response.set_body(output);
+        response.set_content_length(output.size());
+        /*
+        response.flush([this, &valuesToSend](const asio::error_code & ec){
+            if (ec.value() != 0)
+                throw ec;
+            //valuesToSend--; // cant destroyed if referenced
+            printf("FlushCallback values=%i\n", valuesToSend);
+        });
+        */
         return true;
-    }, [&] (bool /*ok*/){
+    },
+    [&] (bool /*ok*/){
+        // FIXME called too early before the flush completion
+        done_cb = true;
         done_cv.notify_all();
     });
 
-    done_cv.wait_for(done_lock, std::chrono::seconds(10));
+    std::unique_lock<std::mutex> done_lock(done_mutex);
+    printf("Done lock aquired! valuesToSend=%i\n",  valuesToSend);
+    done_cv.wait_for(done_lock, std::chrono::seconds(10), [&]{return done_cb;});
+    printf("Sending response\n");
     return response.done();
 }
 
