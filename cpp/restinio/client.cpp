@@ -58,6 +58,37 @@ inline std::string do_request(const std::string & request,
     return result;
 }
 
+std::string create_http_request(const restinio::http_request_header_t header,
+                                const restinio::http_header_fields_t header_fields,
+                                const restinio::http_connection_header_t connection)
+{
+    std::stringstream request;
+
+    request << restinio::method_to_string(header.method()) << " " <<
+               header.request_target() << " " <<
+               "HTTP/" << header.http_major() << "." << header.http_minor() << "\r\n";
+
+    for (auto header_field: header_fields)
+        request << header_field.name() << ": " << header_field.value() << "\r\n";
+
+    std::string conn_str;
+    switch (connection)
+    {
+        case restinio::http_connection_header_t::keep_alive:
+            conn_str = "keep-alive";
+            break;
+        case restinio::http_connection_header_t::close:
+            conn_str = "close";
+            break;
+        case restinio::http_connection_header_t::upgrade:
+            throw std::invalid_argument("upgrade");
+            break;
+    }
+    request << "Connection: " << conn_str << "\r\n";
+
+    return request.str();
+}
+
 int main(const int argc, char* argv[])
 {
     if (argc < 3)
@@ -66,17 +97,22 @@ int main(const int argc, char* argv[])
     const std::string addr = argv[1];
     const in_port_t port = atoi(argv[2]);
 
-    std::stringstream request;
-    request << "GET / HTTP/1.1\r\n" <<
-        "Host: " << addr.c_str() << "\r\n" <<
-        "User-Agent: unit-test\r\n" <<
-        "Accept: */*\r\n" <<
-        "Connection: close\r\n" <<
-        "\r\n";
-    printf(request.str().c_str());
+    restinio::http_request_header_t header;
+    header.request_target("/");
+    header.method(restinio::http_method_t::http_get);
+
+    restinio::http_header_fields_t header_fields;
+    header_fields.append_field(restinio::http_field_t::host, addr.c_str());
+    header_fields.append_field(restinio::http_field_t::user_agent, "RESTinio client");
+    header_fields.append_field(restinio::http_field_t::accept, "*/*");
+
+    auto connection = restinio::http_connection_header_t::close;
+
+    auto request = create_http_request(header, header_fields, connection);
+    printf(request.c_str());
 
     std::string response;
-    response = do_request(request.str(), addr, port);
+    response = do_request(request, addr, port);
 
     return 1;
 }
