@@ -4,10 +4,10 @@
 CXX=g++
 CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g
 
-user_controlled_parts:
-	${CXX} ${CXXFLAGS} -std=c++14 user_controlled_parts.cpp \
+server_reply_by_parts:
+	${CXX} ${CXXFLAGS} -std=c++14 server_reply_by_parts.cpp \
 		-I/usr/local/include/restinio -lfmt -lpthread -lhttp_parser \
-		-o user_controlled_parts.out
+		-o server_reply_by_parts.out
 
 client:
 	${CXX} ${CXXFLAGS} -std=c++14 client.cpp \

@@ -78,23 +78,21 @@ request_status Server::get(restinio::request_handle_t request,
 {
     printf("connection_id: %lu\n", request->connection_id());
 
-    using output_t = restinio::user_controlled_output_t;
+    using output_t = restinio::chunked_output_t;
     auto response = this->init_http_resp(request->create_response<output_t>(
 
     ));
-    //response.set_content_length(request->body().size());
+    response.header().remove_field("Content-Length");
     response.flush();
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     std::string part1 = "i like";
-    response.set_body(part1);
-    response.set_content_length(part1.size());
+    response.append_chunk(part1);
     response.flush();
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     std::string part2 = " waffles!";
-    response.set_body(part2);
-    response.set_content_length(part2.size());
+    response.append_chunk(part2);
     response.flush();
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
