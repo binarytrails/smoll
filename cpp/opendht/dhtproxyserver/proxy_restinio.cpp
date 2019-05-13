@@ -14,9 +14,14 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
     this->jsonBuilder["commentStyle"] = "None";
     this->jsonBuilder["indentation"] = "";
 
+    this->requestChannel = so_5::create_mchain(sobj);
+
+    this->serverProcessingThread = std::thread(
+        &DhtProxyServer::serverProcessing, this, requestChannel);
+
     this->serverThread = std::thread([this, port](){
         using namespace std::chrono;
-        auto maxThreads = std::thread::hardware_concurrency() - 1;
+        auto maxThreads = std::thread::hardware_concurrency() - 2;
         auto restThreads = maxThreads > 1 ? maxThreads : 1;
         printf("Running on restinio on %i threads\n", restThreads);
         auto settings = restinio::on_thread_pool<RestRouterTraits>(restThreads);
@@ -43,6 +48,7 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
 
 DhtProxyServer::~DhtProxyServer()
 {
+
     if (this->serverThread.joinable())
         this->dhtNode->join();
 }
@@ -69,7 +75,30 @@ HttpResponse DhtProxyServer::initHttpResponse(HttpResponse response)
     return response;
 }
 
-request_status DhtProxyServer::options(restinio::request_handle_t request,
+void DhtProxyServer::serverProcessing(so_5::mchain_t requestChannel)
+{
+    bool stopProcessing = false;
+    auto responseChannel = so_5::create_mchain(requestChannel->environment());
+
+    so_5::select(
+        so_5::from_all()
+
+            .on_close([&stopProcessing](const auto &){stopProcessing = true;})
+
+            .stop_on([&stopProcessing]{return stopProcessing;}),
+
+        so_5::case_(requestChannel, [&](HandleRequest command){
+            auto response = this->initHttpResponse(
+                command.m_req->create_response<RequestOutput>());
+            response.flush();
+            so_5::send<so_5::mutable_msg<TimeoutElapsed>>(
+                responseChannel, std::move(response)
+            );
+        })
+    );
+}
+
+RequestStatus DhtProxyServer::options(restinio::request_handle_t request,
                                        restinio::router::route_params_t params)
 {
     this->requestCount++;
@@ -85,7 +114,7 @@ request_status DhtProxyServer::options(restinio::request_handle_t request,
     return response.done();
 }
 
-request_status DhtProxyServer::getNodeInfo(
+RequestStatus DhtProxyServer::getNodeInfo(
     restinio::request_handle_t request, restinio::router::route_params_t params)
 {
     printf("Connection Id: %lu\n", request->connection_id());
@@ -105,7 +134,7 @@ request_status DhtProxyServer::getNodeInfo(
     return response.done();
 }
 
-request_status DhtProxyServer::get(restinio::request_handle_t request,
+RequestStatus DhtProxyServer::get(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
     printf("Connection Id: %lu\n", request->connection_id());
@@ -145,7 +174,7 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
     return restinio::request_handling_status_t::accepted;
 }
 
-request_status DhtProxyServer::put(restinio::request_handle_t request,
+RequestStatus DhtProxyServer::put(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
     printf("Connection Id: %lu\n", request->connection_id());
