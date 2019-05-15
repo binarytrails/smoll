@@ -62,7 +62,7 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
                         "/:hash", std::bind(&DhtProxyServer::options, this, _1, _2));
     router->http_get("/", std::bind(&DhtProxyServer::getNodeInfo, this, _1, _2));
     router->http_get("/:hash", std::bind(&DhtProxyServer::get, this, _1, _2));
-    router->http_put("/:hash", std::bind(&DhtProxyServer::put, this, _1, _2));
+    router->http_post("/:hash", std::bind(&DhtProxyServer::put, this, _1, _2));
     return router;
 }
 
@@ -79,7 +79,6 @@ HttpResponse DhtProxyServer::initHttpResponse(HttpResponse response)
 void DhtProxyServer::scheduleRespDispatch(response_func&& response)
 {
     std::unique_lock<std::mutex> lock(serverRespLock_);
-    printf("adding request to execute\n");
     serverRespQueue_.push(std::move(response));
     lock.unlock();
     serverRespCv_.notify_all();
@@ -93,14 +92,12 @@ void DhtProxyServer::dispatchResponses()
         serverRespCv_.wait(lock, [this]{
             return (serverRespQueue_.size() || stopServer_);
         });
-        printf("dispatchResponses woken up, has %lu resps\n", serverRespQueue_.size());
         // with the lock
         if (!stopServer_ && serverRespQueue_.size()){
             auto resp_op = std::move(serverRespQueue_.front());
             serverRespQueue_.pop();
             lock.unlock();
             // execute the request
-            printf("executing the request\n");
             resp_op();
             lock.lock();
         }
@@ -151,9 +148,11 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
         infoHash = dht::InfoHash::get(params["hash"].to_string());
 
     this->scheduleRespDispatch([this, infoHash, request]{
+
         auto response = std::make_shared<restinio::response_builder_t<response_t>>(
             this->initHttpResponse(request->create_response<response_t>()));
         response->flush();
+
         this->dhtNode->get(infoHash, [this, response] (const dht::Sp<dht::Value>& value){
             auto output = Json::writeString(this->jsonBuilder, value->toJson()) + "\n";
             response->append_chunk(output);
@@ -170,24 +169,16 @@ request_status DhtProxyServer::get(restinio::request_handle_t request,
 request_status DhtProxyServer::put(restinio::request_handle_t request,
                                    restinio::router::route_params_t params)
 {
-    printf("Connection Id: %lu\n", request->connection_id());
-    int content_length = request->header().content_length();
     dht::InfoHash infoHash(params["hash"].to_string());
     if (!infoHash)
         infoHash = dht::InfoHash::get(params["hash"].to_string());
 
     if (request->body().empty()) {
-        auto response = this->initHttpResponse(
-            request->create_response(restinio::status_bad_request()));
+        auto response = this->initHttpResponse(request->create_response(
+            restinio::status_bad_request()));
         response.set_body(this->RESP_MSG_MISSING_PARAMS);
         return response.done();
     }
-
-    bool putSuccess;
-    std::string output;
-    std::mutex done_mutex;
-    std::condition_variable done_cv;
-    std::unique_lock<std::mutex> done_lock(done_mutex);
 
     std::string err;
     Json::Value root;
@@ -207,30 +198,28 @@ request_status DhtProxyServer::put(restinio::request_handle_t request,
         else {
         }
         */
-        this->dhtNode->put(infoHash, value,
-          //done callback
-          [this, value, &putSuccess, &output](bool ok){
-            putSuccess = ok;
-            if (ok){
-                Json::StreamWriterBuilder wbuilder;
-                wbuilder["commentStyle"] = "None";
-                wbuilder["indentation"] = "";
-                output = Json::writeString(this->jsonBuilder, value->toJson()) + "\n";
-                std::cout << output << std::endl;
-            }
-        }, dht::time_point::max(), permanent);
-    }
-    done_cv.wait_for(done_lock, std::chrono::seconds(10));
+        this->scheduleRespDispatch([this, infoHash, request, value, permanent]{
+            this->dhtNode->put(infoHash, value, [this, request, value](bool ok){
+                if (ok){
+                    Json::StreamWriterBuilder wbuilder;
+                    wbuilder["commentStyle"] = "None";
+                    wbuilder["indentation"] = "";
+                    auto output = Json::writeString(this->jsonBuilder, value->toJson()) + "\n";
+                    std::cout << output << std::endl;
+                    auto response = this->initHttpResponse(request->create_response());
+                    response.append_body(output);
+                    response.done();
+                } else {
+                    auto response = this->initHttpResponse(request->create_response(
+                        restinio::status_bad_gateway()));
+                    response.set_body(this->RESP_MSG_PUT_FAILED);
+                    response.done();
+                }
 
-    if (!putSuccess){
-        auto response = this->initHttpResponse(
-            request->create_response(restinio::status_bad_gateway()));
-        response.set_body(this->RESP_MSG_PUT_FAILED);
-        return response.done();
+            }, dht::time_point::max(), permanent);
+        });
     }
-    auto response = this->initHttpResponse(request->create_response());
-    response.append_body(output);
-    return response.done();
+    return restinio::request_handling_status_t::accepted;
 }
 
 int main()
