@@ -36,18 +36,10 @@ class DhtProxyServer
         typedef std::function<void(void)> response_func;
 
         std::unique_ptr<RestRouter> createRestRouter();
-        void scheduleRespDispatch(response_func&& response); // dispatch &&move
-        void dispatchResponses();
 
         std::shared_ptr<dht::DhtRunner> dhtNode;
         Json::StreamWriterBuilder jsonBuilder;
         std::thread serverThread {};
-        std::thread serverRespThread {};
-
-        bool stopServer_ = false;
-        std::condition_variable serverRespCv_;
-        std::queue<response_func> serverRespQueue_;
-        std::mutex serverRespLock_;
 
         mutable std::mutex statsMutex;
         mutable dht::NodeInfo dhtNodeInfo {};
