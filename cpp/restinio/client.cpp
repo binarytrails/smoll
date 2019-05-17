@@ -84,35 +84,39 @@ std::string create_http_request(const restinio::http_request_header_t header,
             throw std::invalid_argument("upgrade");
             break;
     }
-    request << "Connection: " << conn_str << "\r\n";
+    request << "Connection: " << conn_str << "\r\n\r\n";
 
     return request.str();
 }
 
 int main(const int argc, char* argv[])
 {
-    if (argc < 3)
+    if (argc < 4){
+        std::cerr << "Insufficient arguments! Needs <addr> <port> <target>" << std::endl;
         return 1;
+    }
 
     const std::string addr = argv[1];
     const in_port_t port = atoi(argv[2]);
+    const std::string target = argv[3];
 
     restinio::http_request_header_t header;
-    header.request_target("/");
+    header.request_target(target);
     header.method(restinio::http_method_t::http_get);
 
     restinio::http_header_fields_t header_fields;
-    header_fields.append_field(restinio::http_field_t::host, addr.c_str());
+    header_fields.append_field(restinio::http_field_t::host,
+                               (addr + ":" + std::to_string(port)).c_str());
     header_fields.append_field(restinio::http_field_t::user_agent, "RESTinio client");
     header_fields.append_field(restinio::http_field_t::accept, "*/*");
 
-    auto connection = restinio::http_connection_header_t::close;
+    auto connection = restinio::http_connection_header_t::keep_alive;
 
     auto request = create_http_request(header, header_fields, connection);
     printf(request.c_str());
 
-    std::string response;
-    response = do_request(request, addr, port);
+    auto response = do_request(request, addr, port);
+    std::cout << response << std::endl;
 
-    return 1;
+    return 0;
 }
