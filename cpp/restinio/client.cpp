@@ -5,6 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <restinio/all.hpp>
+#include <http_parser.h>
 
 template <typename LAMBDA>
 void do_with_socket(LAMBDA && lambda, const std::string & addr = "127.0.0.1",
@@ -25,33 +26,30 @@ void do_with_socket(LAMBDA && lambda, const std::string & addr = "127.0.0.1",
 }
 
 inline std::string do_request(const std::string & request,
-                              const std::string & addr = "127.0.0.1",
-                              std::uint16_t port = 8080)
+                              const std::string & addr, std::uint16_t port,
+                              http_parser &parser, http_parser_settings &settings)
 {
     std::string result;
-    do_with_socket([&](auto & socket, auto & io_context)
-    {
+    do_with_socket([&](auto & socket, auto & io_context){
+        // write request
         restinio::asio_ns::streambuf b;
         std::ostream req_stream(&b);
         req_stream << request;
         restinio::asio_ns::write(socket, b);
 
-        std::ostringstream sout;
-        restinio::asio_ns::streambuf response_stream;
-        restinio::asio_ns::read_until(socket, response_stream, "\r\n\r\n");
+        std::array<char, 1024> m_read_buffer;
+        // actually reads everything
+        socket.async_read_some(restinio::asio_ns::buffer(m_read_buffer), [&](auto ec, size_t length){
+            std::vector<char> data;
+            data.insert(std::end(data), std::begin(m_read_buffer), std::begin(m_read_buffer) + length);
 
-        sout << &response_stream;
-
-        restinio::asio_ns::error_code error;
-        while(restinio::asio_ns::read(socket, response_stream,
-                                     restinio::asio_ns::transfer_at_least(1),
-                                     error))
-            sout << &response_stream;
-
-        if (!restinio::error_is_eof(error))
-            throw std::runtime_error{fmt::format("read error: {}", error)};
-
-        result = sout.str();
+            auto nparsed = http_parser_execute(&parser, &settings, data.data(), data.size());
+            if (HPE_OK != parser.http_errno && HPE_PAUSED != parser.http_errno){
+                auto err = HTTP_PARSER_ERRNO(&parser);
+                std::cerr << "Couldn't parse the response: " << http_errno_name(err) << std::endl;
+            }
+        });
+        io_context.run();
     },
     addr, port);
 
@@ -95,7 +93,6 @@ int main(const int argc, char* argv[])
         std::cerr << "Insufficient arguments! Needs <addr> <port> <target>" << std::endl;
         return 1;
     }
-
     const std::string addr = argv[1];
     const in_port_t port = atoi(argv[2]);
     const std::string target = argv[3];
@@ -112,10 +109,46 @@ int main(const int argc, char* argv[])
 
     auto connection = restinio::http_connection_header_t::keep_alive;
 
+    // build request
     auto request = create_http_request(header, header_fields, connection);
     printf(request.c_str());
 
-    auto response = do_request(request, addr, port);
+    // setup http_parser & callbacks
+    http_parser_settings settings; // = restinio::impl::create_parser_settings();
+    http_parser_settings_init(&settings);
+    settings.on_url = []( http_parser * parser, const char * at, size_t length ) -> int {
+        printf("on url cb\n");
+        return 0;
+    };
+    settings.on_header_field = [](http_parser * parser, const char * at, size_t length) -> int {
+        printf("on header field cb\n");
+        return 0;
+    };
+    settings.on_header_value = []( http_parser * parser, const char * at, size_t length ) -> int {
+        printf("on header value cb\n");
+        return 0;
+    };
+    settings.on_headers_complete = []( http_parser * parser ) -> int {
+        printf("on headers complete cb\n");
+        return 0;
+    };
+    settings.on_body = []( http_parser * parser, const char * at, size_t length ) -> int {
+        printf("on body cb\n");
+        return 0;
+    };
+    settings.on_message_complete = [](http_parser * parser) -> int {
+        printf("on message complete cb\n");
+        return 0;
+    };
+    settings.on_status = []( http_parser * parser, const char * at, size_t length ) -> int {
+        printf("on status cb code=%i message=%s\n", parser->status_code, std::string(at, length).c_str());
+        return 0;
+    };
+    http_parser *m_parser = new http_parser();
+    http_parser_init(m_parser, HTTP_RESPONSE);
+
+    // send request and give parser for response processing
+    auto response = do_request(request, addr, port, *m_parser, settings);
     std::cout << response << std::endl;
 
     return 0;
