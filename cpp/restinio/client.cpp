@@ -54,14 +54,14 @@ inline void do_request(const std::string & request,
 
 std::string create_http_request(const restinio::http_request_header_t header,
                                 const restinio::http_header_fields_t header_fields,
-                                const restinio::http_connection_header_t connection)
+                                const restinio::http_connection_header_t connection,
+                                const std::string body)
 {
     std::stringstream request;
 
     request << restinio::method_to_string(header.method()) << " " <<
                header.request_target() << " " <<
                "HTTP/" << header.http_major() << "." << header.http_minor() << "\r\n";
-
     for (auto header_field: header_fields)
         request << header_field.name() << ": " << header_field.value() << "\r\n";
 
@@ -78,24 +78,38 @@ std::string create_http_request(const restinio::http_request_header_t header,
             throw std::invalid_argument("upgrade");
             break;
     }
-    request << "Connection: " << conn_str << "\r\n\r\n";
+    request << "Connection: " << conn_str << "\r\n";
+    if (!body.empty()){
+        request << "Content-Length: " << body.size() << "\r\n\r\n";
+        request << body;
+    }
+    request << "\r\n\r\n";
 
     return request.str();
 }
 
 int main(const int argc, char* argv[])
 {
-    if (argc < 4){
-        std::cerr << "Insufficient arguments! Needs <addr> <port> <target>" << std::endl;
+    if (argc < 5){
+        std::cerr << "Insufficient arguments! Needs <method> <addr> <port> <target> <body_if_any>" << std::endl;
         return 1;
     }
-    const std::string addr = argv[1];
-    const in_port_t port = atoi(argv[2]);
-    const std::string target = argv[3];
+    const std::string method_str = argv[1];
+    const std::string addr = argv[2];
+    const in_port_t port = atoi(argv[3]);
+    const std::string target = argv[4];
+    const std::string body = argv[5] ? argv[5] : "";
 
     restinio::http_request_header_t header;
     header.request_target(target);
-    header.method(restinio::http_method_t::http_get);
+    restinio::http_method_t method;
+    if (method_str == "get")
+        method = restinio::http_method_t::http_get;
+    else if (method_str == "post")
+        method = restinio::http_method_t::http_post;
+    else
+        throw std::invalid_argument(method_str);
+    header.method(method);
 
     restinio::http_header_fields_t header_fields;
     header_fields.append_field(restinio::http_field_t::host,
@@ -103,11 +117,11 @@ int main(const int argc, char* argv[])
     header_fields.append_field(restinio::http_field_t::user_agent, "RESTinio client");
     header_fields.append_field(restinio::http_field_t::accept, "*/*");
 
-    auto connection = restinio::http_connection_header_t::keep_alive;
-
     // build request
-    auto request = create_http_request(header, header_fields, connection);
+    auto connection = restinio::http_connection_header_t::keep_alive;
+    auto request = create_http_request(header, header_fields, connection, body);
     printf(request.c_str());
+    return 1;
 
     // setup http_parser & callbacks
     http_parser_settings settings; // = restinio::impl::create_parser_settings();
