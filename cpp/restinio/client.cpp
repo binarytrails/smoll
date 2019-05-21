@@ -25,9 +25,9 @@ void do_with_socket(LAMBDA && lambda, const std::string & addr = "127.0.0.1",
     socket.close();
 }
 
-inline std::string do_request(const std::string & request,
-                              const std::string & addr, std::uint16_t port,
-                              http_parser &parser, http_parser_settings &settings)
+inline void do_request(const std::string & request,
+                       const std::string & addr, std::uint16_t port,
+                       http_parser &parser, http_parser_settings &settings)
 {
     std::string result;
     do_with_socket([&](auto & socket, auto & io_context){
@@ -36,9 +36,8 @@ inline std::string do_request(const std::string & request,
         std::ostream req_stream(&b);
         req_stream << request;
         restinio::asio_ns::write(socket, b);
-
+        // read response
         std::array<char, 1024> m_read_buffer;
-        // actually reads everything
         socket.async_read_some(restinio::asio_ns::buffer(m_read_buffer), [&](auto ec, size_t length){
             std::vector<char> data;
             data.insert(std::end(data), std::begin(m_read_buffer), std::begin(m_read_buffer) + length);
@@ -50,10 +49,7 @@ inline std::string do_request(const std::string & request,
             }
         });
         io_context.run();
-    },
-    addr, port);
-
-    return result;
+    }, addr, port);
 }
 
 std::string create_http_request(const restinio::http_request_header_t header,
@@ -148,8 +144,7 @@ int main(const int argc, char* argv[])
     http_parser_init(m_parser, HTTP_RESPONSE);
 
     // send request and give parser for response processing
-    auto response = do_request(request, addr, port, *m_parser, settings);
-    std::cout << response << std::endl;
+    do_request(request, addr, port, *m_parser, settings);
 
     return 0;
 }
