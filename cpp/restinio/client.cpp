@@ -29,26 +29,31 @@ inline void do_request(const std::string & request,
                        const std::string & addr, std::uint16_t port,
                        http_parser &parser, http_parser_settings &settings)
 {
-    std::string result;
     do_with_socket([&](auto & socket, auto & io_context){
         // write request
         restinio::asio_ns::streambuf b;
         std::ostream req_stream(&b);
         req_stream << request;
         restinio::asio_ns::write(socket, b);
-        // read response
-        std::array<char, 1024> m_read_buffer;
-        socket.async_read_some(restinio::asio_ns::buffer(m_read_buffer), [&](auto ec, size_t length){
-            std::vector<char> data;
-            data.insert(std::end(data), std::begin(m_read_buffer), std::begin(m_read_buffer) + length);
 
-            auto nparsed = http_parser_execute(&parser, &settings, data.data(), data.size());
+        // read response
+        std::ostringstream sout;
+        restinio::asio_ns::error_code error;
+        restinio::asio_ns::streambuf response_stream;
+        restinio::asio_ns::read_until(socket, response_stream, "\r\n\r\n");
+        while(restinio::asio_ns::read(socket, response_stream,
+                                      restinio::asio_ns::transfer_at_least(1), error)){
+            sout << &response_stream;
+            auto nparsed = http_parser_execute(&parser, &settings,
+                                               sout.str().c_str(), sout.str().size());
             if (HPE_OK != parser.http_errno && HPE_PAUSED != parser.http_errno){
                 auto err = HTTP_PARSER_ERRNO(&parser);
                 std::cerr << "Couldn't parse the response: " << http_errno_name(err) << std::endl;
             }
-        });
-        io_context.run();
+        }
+
+        if (!restinio::error_is_eof(error))
+            throw std::runtime_error{fmt::format("read error: {}", error)};
     }, addr, port);
 }
 
@@ -83,7 +88,7 @@ std::string create_http_request(const restinio::http_request_header_t header,
         request << "Content-Length: " << body.size() << "\r\n\r\n";
         request << body;
     }
-    request << "\r\n\r\n";
+    request << "\r\n";
 
     return request.str();
 }
@@ -121,7 +126,6 @@ int main(const int argc, char* argv[])
     auto connection = restinio::http_connection_header_t::keep_alive;
     auto request = create_http_request(header, header_fields, connection, body);
     printf(request.c_str());
-    return 1;
 
     // setup http_parser & callbacks
     http_parser_settings settings; // = restinio::impl::create_parser_settings();
