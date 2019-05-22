@@ -27,7 +27,7 @@ void do_with_socket(LAMBDA && lambda, const std::string & addr = "127.0.0.1",
 
 inline void do_request(const std::string & request,
                        const std::string & addr, std::uint16_t port,
-                       http_parser &parser, http_parser_settings &settings)
+                       http_parser_settings &settings)
 {
     do_with_socket([&](auto & socket, auto & io_context){
         // write request
@@ -35,17 +35,17 @@ inline void do_request(const std::string & request,
         std::ostream req_stream(&b);
         req_stream << request;
         restinio::asio_ns::write(socket, b);
-
         // read response
-        std::ostringstream sout;
+        http_parser parser;
+        http_parser_init(&parser, HTTP_RESPONSE);
         restinio::asio_ns::error_code error;
         restinio::asio_ns::streambuf response_stream;
         restinio::asio_ns::read_until(socket, response_stream, "\r\n\r\n");
         while(restinio::asio_ns::read(socket, response_stream,
                                       restinio::asio_ns::transfer_at_least(1), error)){
+            std::ostringstream sout;
             sout << &response_stream;
-            auto nparsed = http_parser_execute(&parser, &settings,
-                                               sout.str().c_str(), sout.str().size());
+            auto nparsed = http_parser_execute(&parser, &settings, sout.str().c_str(), sout.str().size());
             if (HPE_OK != parser.http_errno && HPE_PAUSED != parser.http_errno){
                 auto err = HTTP_PARSER_ERRNO(&parser);
                 std::cerr << "Couldn't parse the response: " << http_errno_name(err) << std::endl;
@@ -147,7 +147,7 @@ int main(const int argc, char* argv[])
         return 0;
     };
     settings.on_body = []( http_parser * parser, const char * at, size_t length ) -> int {
-        printf("on body cb\n");
+        printf("on body cb  message=%s\n", std::string(at, length).c_str());
         return 0;
     };
     settings.on_message_complete = [](http_parser * parser) -> int {
@@ -158,11 +158,7 @@ int main(const int argc, char* argv[])
         printf("on status cb code=%i message=%s\n", parser->status_code, std::string(at, length).c_str());
         return 0;
     };
-    http_parser *m_parser = new http_parser();
-    http_parser_init(m_parser, HTTP_RESPONSE);
-
     // send request and give parser for response processing
-    do_request(request, addr, port, *m_parser, settings);
-
+    do_request(request, addr, port, settings);
     return 0;
 }
