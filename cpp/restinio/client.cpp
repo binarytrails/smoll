@@ -8,26 +8,27 @@
 #include <http_parser.h>
 
 template <typename LAMBDA>
-void do_with_socket(LAMBDA && lambda, const std::string & addr = "127.0.0.1",
-                                      std::uint16_t port = 8080)
+void do_with_socket(LAMBDA && lambda, const std::string & ip, std::uint16_t port)
 {
     restinio::asio_ns::io_context io_context;
     restinio::asio_ns::ip::tcp::socket socket{io_context};
-
     restinio::asio_ns::ip::tcp::resolver resolver{io_context};
-    restinio::asio_ns::ip::tcp::resolver::query
-        query{restinio::asio_ns::ip::tcp::v4(), addr, std::to_string(port)};
+
+    auto addr = restinio::asio_ns::ip::address::from_string(ip);
+    auto addrType = addr.is_v4() ? restinio::asio_ns::ip::tcp::v4() : restinio::asio_ns::ip::tcp::v6();
+    printf("addr=%s type=%i\n", addr.to_string().c_str(), addrType.family());
+
+    restinio::asio_ns::ip::tcp::resolver::query query{addrType, addr.to_string(), std::to_string(port)};
     restinio::asio_ns::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
 
     restinio::asio_ns::connect(socket, iterator);
-
     lambda(socket, io_context);
     socket.close();
 }
 
 inline void do_request(const std::string & request,
                        const std::string & addr, std::uint16_t port,
-                       http_parser_settings &settings)
+                       http_parser_settings &settings, http_parser *parser)
 {
     do_with_socket([&](auto & socket, auto & io_context){
         // write request
@@ -36,8 +37,6 @@ inline void do_request(const std::string & request,
         req_stream << request;
         restinio::asio_ns::write(socket, b);
         // read response
-        http_parser parser;
-        http_parser_init(&parser, HTTP_RESPONSE);
         restinio::asio_ns::error_code error;
         restinio::asio_ns::streambuf response_stream;
         restinio::asio_ns::read_until(socket, response_stream, "\r\n\r\n");
@@ -45,9 +44,9 @@ inline void do_request(const std::string & request,
                                       restinio::asio_ns::transfer_at_least(1), error)){
             std::ostringstream sout;
             sout << &response_stream;
-            auto nparsed = http_parser_execute(&parser, &settings, sout.str().c_str(), sout.str().size());
-            if (HPE_OK != parser.http_errno && HPE_PAUSED != parser.http_errno){
-                auto err = HTTP_PARSER_ERRNO(&parser);
+            auto nparsed = http_parser_execute(parser, &settings, sout.str().c_str(), sout.str().size());
+            if (HPE_OK != parser->http_errno && HPE_PAUSED != parser->http_errno){
+                auto err = HTTP_PARSER_ERRNO(parser);
                 std::cerr << "Couldn't parse the response: " << http_errno_name(err) << std::endl;
             }
         }
@@ -127,6 +126,10 @@ int main(const int argc, char* argv[])
     auto request = create_http_request(header, header_fields, connection, body);
     printf(request.c_str());
 
+    struct parser_ctx_t {
+        int flag;
+    };
+
     // setup http_parser & callbacks
     http_parser_settings settings; // = restinio::impl::create_parser_settings();
     http_parser_settings_init(&settings);
@@ -147,7 +150,10 @@ int main(const int argc, char* argv[])
         return 0;
     };
     settings.on_body = []( http_parser * parser, const char * at, size_t length ) -> int {
-        printf("on body cb  message=%s\n", std::string(at, length).c_str());
+        printf("on body cb  message={%s} ", std::string(at, length).c_str());
+
+        auto *ctx = reinterpret_cast<parser_ctx_t*>(parser->data);
+        printf("flag=%i\n", (*ctx).flag);
         return 0;
     };
     settings.on_message_complete = [](http_parser * parser) -> int {
@@ -158,7 +164,15 @@ int main(const int argc, char* argv[])
         printf("on status cb code=%i message=%s\n", parser->status_code, std::string(at, length).c_str());
         return 0;
     };
+    http_parser *parser;
+    http_parser_init(parser, HTTP_RESPONSE);
+
+    // context data example to test against smth
+    parser_ctx_t *ctx;
+    (*ctx).flag = 666;
+    parser->data = ctx;
+
     // send request and give parser for response processing
-    do_request(request, addr, port, settings);
+    do_request(request, addr, port, settings, parser);
     return 0;
 }
