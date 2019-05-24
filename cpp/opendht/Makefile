@@ -27,5 +27,8 @@ proxy_restinio:
 		-I/usr/local/include/restinio -lfmt -lpthread -lhttp_parser \
 		-o proxy_restinio.out
 
+dhtclient:
+	${CXX} ${CXXFLAGS} -std=c++14 dhtclient.cpp -lpthread -o dhtclient.out
+
 clean:
 	rm -f *.out
