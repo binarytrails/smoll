@@ -13,6 +13,7 @@ int main(int argc, char * argv[])
     dht::DhtProxyClient client {[](){}, "127.0.0.1:8080", "client_id"};
     std::condition_variable doneCv;
     bool done = false;
+    dht::Value::Filter filter;
 
     client.get(hash, [](const dht::Sp<dht::Value>& value){
         printf("getcb=%s\n", value->toString().c_str());
@@ -21,7 +22,7 @@ int main(int argc, char * argv[])
         printf("donecb=%i\n", ok);
         done = true;
         doneCv.notify_all();
-    });
+    });//, std::move(filter));
 
     std::mutex doneMutex;
     std::unique_lock<std::mutex> lock(doneMutex);
