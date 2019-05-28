@@ -39,6 +39,7 @@ inline void do_request(const std::string & request,
         // read response
         restinio::asio_ns::error_code error;
         restinio::asio_ns::streambuf response_stream;
+        // remove read_until if you delegate the connection handling to server
         restinio::asio_ns::read_until(socket, response_stream, "\r\n\r\n");
         while(restinio::asio_ns::read(socket, response_stream,
                                       restinio::asio_ns::transfer_at_least(1), error)){
@@ -50,7 +51,6 @@ inline void do_request(const std::string & request,
                 std::cerr << "Couldn't parse the response: " << http_errno_name(err) << std::endl;
             }
         }
-
         if (!restinio::error_is_eof(error))
             throw std::runtime_error{fmt::format("read error: {}", error)};
     }, addr, port);
@@ -120,6 +120,7 @@ int main(const int argc, char* argv[])
                                (addr + ":" + std::to_string(port)).c_str());
     header_fields.append_field(restinio::http_field_t::user_agent, "RESTinio client");
     header_fields.append_field(restinio::http_field_t::accept, "*/*");
+    //header_fields.append_field(restinio::http_field_t::content_type, "application/json");
 
     // build request
     auto connection = restinio::http_connection_header_t::keep_alive;
@@ -131,7 +132,7 @@ int main(const int argc, char* argv[])
     };
 
     // setup http_parser & callbacks
-    http_parser_settings settings; // = restinio::impl::create_parser_settings();
+    http_parser_settings settings;
     http_parser_settings_init(&settings);
     settings.on_url = []( http_parser * parser, const char * at, size_t length ) -> int {
         printf("on url cb\n");
@@ -168,11 +169,13 @@ int main(const int argc, char* argv[])
     http_parser_init(parser, HTTP_RESPONSE);
 
     // context data example to test against smth
-    parser_ctx_t *ctx;
-    (*ctx).flag = 666;
-    parser->data = ctx;
+    auto ctx = std::make_shared<parser_ctx_t>();
+    ctx->flag = 666;
+    parser->data = static_cast<void*>(ctx.get());
 
     // send request and give parser for response processing
     do_request(request, addr, port, settings, parser);
+
+    printf("finishing...\n");
     return 0;
 }
