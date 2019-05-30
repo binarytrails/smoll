@@ -13,11 +13,10 @@ class Session
         }
 
         void read(std::error_code& ec){
-            if (std::size_t len = socket_.read_some(asio::buffer(data_), ec)){
-                write_buffer_ = asio::buffer(data_, len);
-                std::string out(asio::buffers_begin(write_buffer_),
-                                asio::buffers_begin(write_buffer_) + len);
-                printf("%s", out.c_str());
+            std::string data;
+            if (asio::read(socket_, asio::dynamic_buffer(data), ec)){
+                printf("%s", data.c_str());
+                write_buffer_ = data;
                 state_ = writing;
             }
         }
@@ -27,17 +26,15 @@ class Session
         }
 
         void write(std::error_code& ec){
-            if (std::size_t len = socket_.write_some(asio::buffer(write_buffer_), ec)){
-                write_buffer_ = write_buffer_ + len;
-                state_ = asio::buffer_size(write_buffer_) > 0 ? writing : reading;
+            if (asio::write(socket_, asio::dynamic_buffer(write_buffer_), ec)){
+                state_ = write_buffer_.size() > 0 ? writing : reading;
             }
         }
 
     private:
         asio::ip::tcp::socket& socket_;
         enum { reading, writing } state_ = reading;
-        std::array<char, 128> data_;
-        asio::const_buffer write_buffer_;
+        std::string write_buffer_;
 };
 
 class Connection: public std::enable_shared_from_this<Connection>
