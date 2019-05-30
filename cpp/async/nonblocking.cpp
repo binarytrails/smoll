@@ -13,10 +13,10 @@ class Session
         }
 
         void read(std::error_code& ec){
-            std::string data;
-            if (asio::read(socket_, asio::dynamic_buffer(data), ec)){
-                printf("%s", data.c_str());
-                write_buffer_ = data;
+            std::string read_buffer_;
+            if (asio::read(socket_, asio::dynamic_buffer(read_buffer_), ec)){
+                printf("%s", read_buffer_.c_str());
+                write_buffer_ = read_buffer_;
                 state_ = writing;
             }
         }
@@ -53,14 +53,11 @@ class Connection: public std::enable_shared_from_this<Connection>
 
             if (session_.ready_read() && !read_in_progress_){
                 read_in_progress_ = true;
-
                 socket_.async_wait(asio::ip::tcp::socket::wait_read,
-                [this, self](std::error_code ec){
+                                  [this, self](std::error_code ec){
                     read_in_progress_ = false;
-
                     if (!ec)
                         session_.read(ec);
-
                     if (!ec || ec == asio::error::would_block)
                         operations();
                     else
@@ -70,12 +67,9 @@ class Connection: public std::enable_shared_from_this<Connection>
 
             if (session_.ready_write() && !write_in_progress_){
                 write_in_progress_ = true;
-
                 socket_.async_wait(asio::ip::tcp::socket::wait_write,
-                [this, self](std::error_code ec){
-
+                                  [this, self](std::error_code ec){
                     write_in_progress_ = false;
-
                     if (!ec)
                         session_.write(ec);
                     if (!ec || ec == asio::error::would_block)
@@ -85,8 +79,6 @@ class Connection: public std::enable_shared_from_this<Connection>
                 });
             }
         }
-
-    private:
         asio::ip::tcp::socket socket_;
         Session session_{socket_};
         bool read_in_progress_ = false;
@@ -103,8 +95,8 @@ class Server
 
     private:
         void accept(){
-            acceptor_.async_accept(
-            [this](std::error_code ec, asio::ip::tcp::socket socket){
+            acceptor_.async_accept([this](std::error_code ec,
+                                          asio::ip::tcp::socket socket){
                 if (!ec){
                     std::make_shared<Connection>(std::move(socket))->start();
                 }
