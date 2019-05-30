@@ -26,11 +26,9 @@ class Session
         }
 
         void write(std::string request, std::error_code& ec){
-            printf("writting request\n");
             if (asio::write(socket_, asio::dynamic_buffer(request), ec)){
                 state_ = write_buffer_.size() > 0 ? writing : reading;
             }
-            printf("state_=%i\n", state_);
         }
 
     private:
@@ -48,7 +46,6 @@ class Connection: public std::enable_shared_from_this<Connection>
             asio::connect(socket_, r_iter);
         }
 
-
         void request(const std::string req){
             auto self(shared_from_this());
 
@@ -57,28 +54,33 @@ class Connection: public std::enable_shared_from_this<Connection>
                 socket_.async_wait(asio::ip::tcp::socket::wait_write,
                                   [this, req, self](std::error_code ec){
                     write_in_progress_ = false;
-                    printf("%s\n", ec.message().c_str());
+                    printf("write: %s\n", ec.message().c_str());
                     if (!ec)
                         session_.write(req, ec);
+                    response();
                 });
             }
         }
 
-        std::string response(){
+        void response(){
             auto self(shared_from_this());
             std::string resp;
 
             if (session_.ready_read() && !read_in_progress_){
                 read_in_progress_ = true;
+
                 socket_.async_wait(asio::ip::tcp::socket::wait_read,
                                   [this, resp, self](std::error_code ec){
                     read_in_progress_ = false;
+                    printf("read: %s\n", ec.message().c_str());
                     if (!ec)
-                        /*resp =*/session_.read(ec);
+                        session_.read(ec);
                 });
             }
-            return resp;
+        }
 
+        bool open(){
+            return socket_.is_open();
         }
 
         void close(){
@@ -99,26 +101,15 @@ class Client
                 resolver_(io_context){
             addr_ = asio::ip::address::from_string(ip);
             port_ = port;
-            resolve();
         }
 
-        void send_request(std::shared_ptr<Connection> conn){
-            std::stringstream req;
-            req << "GET / HTTP/1.1\n" <<
-                   "Host: 127.0.0.1:8080\n" <<
-                   "User-Agent: curl/7.64.1\n" <<
-                   "Accept: */*\n\r\n\r\n";
-            printf("sending:\n%s\n", req.str().c_str());
-            conn->request(req.str());
-            //if (!resolve_in_progress_)
-            //    connections_.begin()->get()->request(req.str());
-            //else
-            //    throw std::runtime_error("resolve is in progress");
+        void send_request(std::string request){
+            async_request(request);
         }
 
     private:
-        void resolve(){
-            //resolve_in_progress_ = true;
+
+        void async_request(std::string r){
             auto addr_t = addr_.is_v4() ? asio::ip::tcp::v4() : asio::ip::tcp::v6();
             asio::ip::tcp::resolver::query query{addr_t, addr_.to_string(),
                                                  std::to_string(port_)};
@@ -126,22 +117,31 @@ class Client
             auto conn = std::make_shared<Connection>(std::move(socket));
             connections_.push_back(conn);
 
-            resolver_.async_resolve(query,[this, conn](std::error_code ec,
+            resolver_.async_resolve(query,[this, conn, r](std::error_code ec,
                                            asio::ip::tcp::resolver::results_type results){
+                // ready for write
                 if (!ec and !results.empty()){
-                    auto first = results.begin();
-                    std::cout << "resolved " << first->host_name() <<
-                                 ":" << first->service_name() << std::endl;
-                    conn->start(first);
-                    send_request(conn);
+                    auto da = results.begin();
+                    std::cout << "resolved " << "host=" << da->host_name() <<
+                                 " service=" << da->service_name() << std::endl;
+                    conn->start(da);
+
+                    if (conn->open()){
+                        printf("sending:\n%s\n", r.c_str());
+                        conn->request(r);
+                    }
+                    else
+                        printf("error: connection closed\n");
+                }
+                else {
+                    printf("resolving error: closing connection\n");
+                    conn->close();
                 }
             });
-            resolve_in_progress_ = false;
         }
 
         asio::ip::address addr_;
         std::uint16_t port_;
-        bool resolve_in_progress_ = false;
         asio::ip::tcp::resolver resolver_;
         std::vector<std::shared_ptr<Connection>> connections_;
 };
@@ -152,10 +152,20 @@ int main(int argc, char* argv[]){
             std::cerr << "Usage: ./binary <ip> <port>\n";
             return 1;
         }
+        std::stringstream req;
+        req << "GET / HTTP/1.1\r\n" <<
+               "Host: 127.0.0.1:8080\r\n" <<
+               "Accept: */*\r\n" <<
+               "Connection: keep-alive\r\n" <<
+               "\r\n";
+
         asio::io_context io_context;
         Client client(io_context, argv[1], std::atoi(argv[2]));
-        //client.send_request();
+        client.send_request(req.str());
+        client.send_request(req.str());
+        client.send_request(req.str());
         io_context.run();
+        printf("finishing..\n");
     }
     catch (std::exception& e){
         std::cerr << "Exception: " << e.what() << "\n";
