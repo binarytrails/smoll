@@ -17,7 +17,8 @@ class Session
         void read(std::error_code& ec){
             std::string response;
             if (asio::read(socket_, asio::dynamic_buffer(response), ec)){
-                printf("%s", response.c_str());
+                read_buffer_ = response;
+                printf("%s", read_buffer_.c_str());
             }
         }
 
@@ -35,6 +36,7 @@ class Session
         asio::ip::tcp::socket& socket_;
         enum { reading, writing } state_ = writing;
         std::string write_buffer_;
+        std::string read_buffer_;
 };
 
 class Connection: public std::enable_shared_from_this<Connection>
