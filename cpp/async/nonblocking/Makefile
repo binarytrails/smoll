@@ -10,8 +10,8 @@ server:
 client:
 	${CXX} ${CXXFLAGS} -std=c++14 client.cpp -o client.out
 
-cbs_client:
-	${CXX} ${CXXFLAGS} -std=c++14 cbs_client.cpp -o cbs_client.out
+client2:
+	${CXX} ${CXXFLAGS} -std=c++14 client2.cpp -o client2.out
 
 clean:
 	rm -f *.out
