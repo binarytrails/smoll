@@ -54,7 +54,7 @@ class Client
             port_ = port;
         }
 
-        void post_request(std::string request, const ResponseCallback &respcb){
+        void post_request(std::string request, const ResponseCallback respcb = nullptr){
             // invoke the given handler and return immediately
             asio::post(ctx_, [this, request, respcb](){
                 this->async_request(request, respcb);
@@ -73,7 +73,7 @@ class Client
         }
 
     private:
-        void async_request(std::string request, const ResponseCallback respcb){
+        void async_request(std::string request, const ResponseCallback respcb = nullptr){
             using namespace asio::ip;
 
             auto conn = std::make_shared<Connection>(connId_, std::move(tcp::socket{ctx_}));
@@ -114,7 +114,8 @@ class Client
                     printf("[connection:%i] error: %s\n", conn->id(), ec.message().c_str()); 
                     return;
                 }
-                respcb(data.c_str());
+                if (respcb)
+                    respcb(data.c_str());
             });
         }
 
@@ -146,6 +147,7 @@ int main(int argc, char* argv[]){
         client.post_request(req.str(), [](const std::string &resp){
             printf("=========== 2 ==========\n%s\n", resp.c_str());
         });
+        client.post_request(req.str());
         // handlers are invoked only by a thread that is currently calling
         client.context().run();
         // stopping the io_context from running out of work
