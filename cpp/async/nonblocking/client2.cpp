@@ -6,8 +6,6 @@
 #include <memory>
 #include <asio.hpp>
 
-using ResponseCallback = std::function<void(const std::string data)>;
-
 class Connection
 {
     public:
@@ -46,6 +44,8 @@ class Connection
         asio::ip::tcp::socket socket_;
 };
 
+using ResponseCallback = std::function<void(const std::string data)>;
+
 class Client
 {
     public:
@@ -55,9 +55,11 @@ class Client
         }
 
         void post_request(std::string request, const ResponseCallback &respcb){
-            // post (run when ready) to io_context
+            // invoke the given handler and return immediately
             asio::post(ctx_, [this, request, respcb](){
                 this->async_request(request, respcb);
+                // execute at most one handler, it ensures that same func call
+                // with different callback gets the priority on the io_context
                 ctx_.run_one();
             });
         }
@@ -71,25 +73,24 @@ class Client
         }
 
     private:
-
         void async_request(std::string request, const ResponseCallback respcb){
-            auto addr_t = addr_.is_v4() ? asio::ip::tcp::v4() : asio::ip::tcp::v6();
-            asio::ip::tcp::resolver::query query{addr_t, addr_.to_string(),
-                                                 std::to_string(port_)};
+            using namespace asio::ip;
 
-            connId_++;
-            auto conn = std::make_shared<Connection>(connId_, std::move(asio::ip::tcp::socket{ctx_}));
+            auto conn = std::make_shared<Connection>(connId_, std::move(tcp::socket{ctx_}));
             printf("[connection:%i] created\n", conn->id());
+            connId_++;
 
-            resolver_.async_resolve(query, [this, conn, request, respcb](
-                    std::error_code ec, asio::ip::tcp::resolver::results_type results
-            ){
-                if (ec or results.empty()){
+            tcp::resolver::query query{addr_.is_v4() ? tcp::v4() : tcp::v6(),
+                                       addr_.to_string(), std::to_string(port_)};
+
+            // resolve sometime in future
+            resolver_.async_resolve(query, [=](std::error_code ec, tcp::resolver::results_type res){
+                if (ec or res.empty()){
                     printf("[connection:%i] error resolving\n", conn->id());
                     conn->close();
                     return;
                 }
-                for (auto da = results.begin(); da != results.end(); ++da){
+                for (auto da = res.begin(); da != res.end(); ++da){
                     printf("[connection:%i] resolved host=%s service=%s\n",
                             conn->id(), da->host_name().c_str(), da->service_name().c_str());
                     conn->start(da);
@@ -121,7 +122,7 @@ class Client
         std::uint16_t port_;
         asio::ip::address addr_;
         asio::ip::tcp::resolver resolver_;
-        uint16_t connId_ = 0;
+        uint16_t connId_ = 1;
 };
 
 int main(int argc, char* argv[]){
