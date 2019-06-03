@@ -8,7 +8,7 @@
 
 using ResponseCallback = std::function<void(const std::string data)>;
 
-class Connection: public std::enable_shared_from_this<Connection>
+class Connection
 {
     public:
         Connection(const uint16_t id, asio::ip::tcp::socket socket):
@@ -54,10 +54,11 @@ class Client
             port_ = port;
         }
 
-        void post_request(std::string request){
-            // submit a function to the io_context, run when ready
-            asio::post(ctx_, [this, request](){
-                this->async_request(request);
+        void post_request(std::string request, const ResponseCallback &respcb){
+            // post (run when ready) to io_context
+            asio::post(ctx_, [this, request, respcb](){
+                this->async_request(request, respcb);
+                ctx_.run_one();
             });
         }
 
@@ -71,7 +72,7 @@ class Client
 
     private:
 
-        void async_request(std::string request){
+        void async_request(std::string request, const ResponseCallback respcb){
             auto addr_t = addr_.is_v4() ? asio::ip::tcp::v4() : asio::ip::tcp::v6();
             asio::ip::tcp::resolver::query query{addr_t, addr_.to_string(),
                                                  std::to_string(port_)};
@@ -80,8 +81,9 @@ class Client
             auto conn = std::make_shared<Connection>(connId_, std::move(asio::ip::tcp::socket{ctx_}));
             printf("[connection:%i] created\n", conn->id());
 
-            resolver_.async_resolve(query, [this, conn, request](std::error_code ec,
-                                    asio::ip::tcp::resolver::results_type results){
+            resolver_.async_resolve(query, [this, conn, request, respcb](
+                    std::error_code ec, asio::ip::tcp::resolver::results_type results
+            ){
                 if (ec or results.empty()){
                     printf("[connection:%i] error resolving\n", conn->id());
                     conn->close();
@@ -107,10 +109,11 @@ class Client
                 // read response
                 printf("[connection:%i] response read\n", conn->id());
                 auto data = conn->read(ec);
-                if (ec and ec != asio::error::eof)
+                if (ec and ec != asio::error::eof){
                     printf("[connection:%i] error: %s\n", conn->id(), ec.message().c_str()); 
-                else
-                    printf(data.c_str());
+                    return;
+                }
+                respcb(data.c_str());
             });
         }
 
@@ -135,9 +138,13 @@ int main(int argc, char* argv[]){
     auto r = req.str();
 
     Client client(argv[1], std::atoi(argv[2]));
-    client.post_request(req.str());
-    client.post_request(req.str());
     try {
+        client.post_request(req.str(), [](const std::string &resp){
+            printf("=========== 1 ==========\n%s\n", resp.c_str());
+        });
+        client.post_request(req.str(), [](const std::string &resp){
+            printf("=========== 2 ==========\n%s\n", resp.c_str());
+        });
         // handlers are invoked only by a thread that is currently calling
         client.context().run();
         // stopping the io_context from running out of work
