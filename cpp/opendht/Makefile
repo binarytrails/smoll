@@ -30,5 +30,8 @@ proxy_restinio:
 dhtclient:
 	${CXX} ${CXXFLAGS} -std=c++14 dhtclient.cpp -lpthread -o dhtclient.out
 
+dhtclient_async:
+	${CXX} ${CXXFLAGS} -std=c++14 dhtclient_async.cpp -lpthread -o dhtclient_async.out
+
 clean:
 	rm -f *.out
