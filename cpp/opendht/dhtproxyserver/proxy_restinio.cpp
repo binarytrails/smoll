@@ -1,15 +1,10 @@
-/* Vsevolod Ivanov
- *
- * TODO:
- *  - set connection timeout
- *  - implement sessions
- */
+// Vsevolod Ivanov
 
 #include "proxy_restinio.h"
 
 DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
                                in_port_t port):
-    dhtNode(dhtNode)
+    dhtNode(dhtNode), httpServer_(restinio::own_io_context(), []( auto & settings ){})
 {
     this->jsonBuilder["commentStyle"] = "None";
     this->jsonBuilder["indentation"] = "";
@@ -19,7 +14,7 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
         auto maxThreads = std::thread::hardware_concurrency() - 1; // dht
         auto restThreads = maxThreads > 1 ? maxThreads : 1;
         printf("Running on restinio on %i threads\n", restThreads);
-        auto settings = restinio::on_thread_pool<RestRouterTraits>(restThreads);
+        auto settings = ServerSettings(restThreads);
         settings.address("0.0.0.0");
         settings.port(port);
         settings.request_handler(this->createRestRouter());
@@ -29,8 +24,16 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
         settings.socket_options_setter([](auto & options){
             options.set_option(asio::ip::tcp::no_delay{true});
         });
+        httpServer_ = restinio::http_server_t<RestRouterTraits>(
+            restinio::own_io_context(),
+            std::forward<ServerSettings>(settings)
+        );
+        restinio::asio_ns::post(httpServer_.io_context(),
+            [&]{
+                httpServer_.open_sync();
+            });
         try {
-            restinio::run(std::move(settings));
+            httpServer_.io_context().run();
         }
         catch(const std::exception &ex) {
             std::cerr << "Error: " << ex.what() << std::endl;
@@ -40,8 +43,22 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
 
 DhtProxyServer::~DhtProxyServer()
 {
-    if (this->serverThread.joinable())
+    stop();
+}
+
+bool DhtProxyServer::running()
+{
+    return !httpServer_.io_context().stopped();
+}
+
+void DhtProxyServer::stop()
+{
+    httpServer_.close_sync();
+
+    if (this->serverThread.joinable()){
+        this->serverThread.join();
         this->dhtNode->join();
+    }
 }
 
 std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
@@ -186,7 +203,9 @@ int main()
     dhtNode->bootstrap("bootstrap.jami.net", "4222");
 
     DhtProxyServer dhtproxy {dhtNode, 8080};
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+    while (dhtproxy.running()) {
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        printf("stopping..\n");
+        dhtproxy.stop();
     };
 }
