@@ -15,7 +15,7 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<dht::DhtRunner> dhtNode,
         auto restThreads = maxThreads > 1 ? maxThreads : 1;
         printf("Running on restinio on %i threads\n", restThreads);
         auto settings = ServerSettings(restThreads);
-        settings.address("0.0.0.0");
+        settings.address("127.0.0.1");
         settings.port(port);
         settings.request_handler(this->createRestRouter());
         settings.read_next_http_message_timelimit(10s);
@@ -65,8 +65,8 @@ std::unique_ptr<RestRouter> DhtProxyServer::createRestRouter()
 {
     using namespace std::placeholders;
     auto router = std::make_unique<RestRouter>();
-    router->add_handler(restinio::http_method_t::http_options,
-                        "/:hash", std::bind(&DhtProxyServer::options, this, _1, _2));
+    router->add_handler(restinio::http_method_options(),
+                        "/", std::bind(&DhtProxyServer::options, this, _1, _2));
     router->http_get("/", std::bind(&DhtProxyServer::getNodeInfo, this, _1, _2));
     router->http_get("/:hash", std::bind(&DhtProxyServer::get, this, _1, _2));
     router->http_post("/:hash", std::bind(&DhtProxyServer::put, this, _1, _2));
@@ -205,7 +205,7 @@ int main()
     DhtProxyServer dhtproxy {dhtNode, 8080};
     while (dhtproxy.running()) {
         std::this_thread::sleep_for(std::chrono::seconds(10));
-        printf("stopping..\n");
-        dhtproxy.stop();
+        //printf("stopping..\n");
+        //dhtproxy.stop();
     };
 }
