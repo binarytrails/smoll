@@ -3,50 +3,50 @@
 #include <string>
 #include <iostream>
 #include <opendht.h>
+#include <opendht/log.h>
 #include <opendht/dht_proxy_client.h>
 
 int main(int argc, char * argv[])
 {
     auto hash = dht::InfoHash::get(argv[1]);
-    dht::DhtProxyClient client {[](){}, "127.0.0.1:8080", "client_id"};
 
+    std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
+    dht::DhtProxyClient client([](){}, "127.0.0.1:8080", "client_id", logger);
     auto &io_context = client.httpIOContext();
 
-    dht::Value::Filter filter;
-
-    client.get(hash, [](const dht::Sp<dht::Value>& value){
-        printf("[get1::cb] value=%s\n", value->toString().c_str());
+    client.get(hash, [&](const dht::Sp<dht::Value>& value){
+        logger->d("[get1::cb] value=%s", value->toString().c_str());
         return true;
-    },[](bool ok){
-        printf("[get1::donecb] ok=%i\n", ok);
-    }, std::move(filter));
+    },[&](bool ok){
+        logger->d("[get1::donecb] ok=%i", ok);
+    });
 
     dht::Value value {"slenderman"};
     client.put(hash, std::move(value), [&](bool ok){
-        printf("[put1::donecb] ok=%i\n", ok);
+        logger->d("[put1::donecb] ok=%i", ok);
     });
 
     client.listen(hash, [&](const std::vector<dht::Sp<dht::Value>>& values,
                             bool expired){
-        printf("[listen1::cb] values = ");
+        std::stringstream ss; ss << "[listen1::cb] values = ";
         for (const auto &value: values)
-            std::cout << value->toString() << " ";
-        std::cout << std::endl;
+            ss << value->toString() << " ";
+        logger->d(ss.str().c_str());
         return true;
-    }, std::move(filter));
+    });
 
     client.listen(hash, [&](const std::vector<dht::Sp<dht::Value>>& values,
                             bool expired){
-        printf("[listen2::cb] values = ");
+        std::stringstream ss; ss << "[listen1::cb] values = ";
         for (const auto &value: values)
-            std::cout << value->toString() << " ";
-        std::cout << std::endl;
+            ss << value->toString() << " ";
+        logger->d(ss.str().c_str());
         return true;
-    }, std::move(filter));
+    });
 
     dht::Value value2 {"spidergurl"};
     client.put(hash, std::move(value2), [&](bool ok){
-        printf("[put2::donecb] ok=%i\n", ok);
+        logger->d("[put2::donecb] ok=%i", ok);
     });
 
     while (true)
