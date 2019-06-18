@@ -33,5 +33,8 @@ dhtclient:
 dhtclient_async:
 	${CXX} ${CXXFLAGS} -std=c++14 dhtclient_async.cpp -lpthread -o dhtclient_async.out
 
+proxy_runner:
+	${CXX} ${CXXFLAGS} -std=c++14 proxy_runner.cpp -lpthread -o proxy_runner.out
+
 clean:
 	rm -f *.out
