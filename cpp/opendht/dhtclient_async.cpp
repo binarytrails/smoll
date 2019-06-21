@@ -43,7 +43,8 @@ int main(int argc, char * argv[])
         logger->d("[get1::donecb] ok=%i", ok);
     });
 
-    client.io_context().run();
+    while (true)
+        std::this_thread::sleep_for(std::chrono::seconds(10));
 
     return 0;
 }
