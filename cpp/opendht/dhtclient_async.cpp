@@ -15,14 +15,18 @@ int main(int argc, char * argv[])
     dht::DhtProxyClient client([](){}, "127.0.0.1:8080", "client01", logger);
 
     // start a listener
-    client.listen(hash, [&](const std::vector<dht::Sp<dht::Value>>& values,
-                            bool expired){
+    auto ltoken = client.listen(hash, [&](
+        const std::vector<dht::Sp<dht::Value>>& values, bool expired)
+    {
         std::stringstream ss; ss << "[listen::cb] values = ";
         for (const auto &value: values)
             ss << value->toString() << " ";
         logger->d(ss.str().c_str());
         return true;
     });
+
+    // do a first subscribe
+    // ...
 
     // send two posts
     dht::Value value {"slenderman"};
@@ -43,8 +47,9 @@ int main(int argc, char * argv[])
         logger->d("[get1::donecb] ok=%i", ok);
     });
 
-    while (true)
+    while (true){
         std::this_thread::sleep_for(std::chrono::seconds(10));
-
+        client.periodic(nullptr, 0, nullptr, 0);
+    }
     return 0;
 }
