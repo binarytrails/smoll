@@ -3,7 +3,7 @@
 
 CXX=g++
 CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g \
-		-lopendht -lgnutls -ljsoncpp -I/usr/include/opendht \
+		-lopendht -lgnutls -pthread -ljsoncpp -I/usr/include/opendht \
 		-DOPENDHT_JSONCPP
 
 putget:
@@ -24,17 +24,20 @@ proxy_cpr:
 proxy_restinio:
 	${CXX} ${CXXFLAGS} -std=c++14 \
 		dhtproxyserver/proxy_restinio.cpp -I./dhtproxyserver \
-		-I/usr/local/include/restinio -lfmt -lpthread -lhttp_parser \
+		-I/usr/local/include/restinio -lfmt -lhttp_parser \
 		-o proxy_restinio.out
 
 dhtclient:
-	${CXX} ${CXXFLAGS} -std=c++14 dhtclient.cpp -lpthread -o dhtclient.out
+	${CXX} ${CXXFLAGS} -std=c++14 dhtclient.cpp -o dhtclient.out
 
 dhtclient_async:
-	${CXX} ${CXXFLAGS} -std=c++14 dhtclient_async.cpp -lpthread -o dhtclient_async.out
+	${CXX} ${CXXFLAGS} -std=c++14 dhtclient_async.cpp -o dhtclient_async.out
 
 proxy_runner:
-	${CXX} ${CXXFLAGS} -std=c++14 proxy_runner.cpp -lpthread -o proxy_runner.out
+	${CXX} ${CXXFLAGS} -std=c++14 proxy_runner.cpp -o proxy_runner.out
+
+future_get:
+	${CXX} ${CXXFLAGS} -std=c++14 future-get.cpp -o future-get.out
 
 clean:
 	rm -f *.out
