@@ -8,11 +8,14 @@
 
 int main(int argc, char * argv[])
 {
+    if (argc < 4){
+        printf("./run <hash-key> <proxy-addr> <client-key>\n");
+        return 1;
+    }
+
     auto hash = dht::InfoHash::get(argv[1]);
-
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
-
-    dht::DhtProxyClient client([](){}, "127.0.0.1:8080", "client01", logger);
+    dht::DhtProxyClient client([](){}, argv[2], argv[3], logger);
 
     // start a listener
     auto ltoken = client.listen(hash, [&](
@@ -24,9 +27,6 @@ int main(int argc, char * argv[])
         logger->d(ss.str().c_str());
         return true;
     });
-
-    // do a first subscribe
-    // ...
 
     // send two posts
     dht::Value value {"slenderman"};
@@ -47,9 +47,10 @@ int main(int argc, char * argv[])
         logger->d("[get1::donecb] ok=%i", ok);
     });
 
-    while (true){
-        std::this_thread::sleep_for(std::chrono::seconds(10));
-        client.periodic(nullptr, 0, nullptr, 0);
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    client.periodic(nullptr, 0, nullptr, 0);
+    std::this_thread::sleep_for(std::chrono::seconds(20));
+    client.connectivityChanged(); // restarts listeners
+    std::this_thread::sleep_for(std::chrono::seconds(20));
     return 0;
 }

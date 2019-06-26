@@ -4,9 +4,14 @@
 
 int main(int argc, char * argv[])
 {
+    if (argc < 3){
+        printf("./run <key> <addr>\n");
+        return 1;
+    }
+
     auto hash = dht::InfoHash::get(argv[1]);
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
-    dht::DhtProxyClient client([](){}, "127.0.0.1:8080", "client01", logger);
+    dht::DhtProxyClient client([](){}, argv[2], "client01", logger);
 
     // get wrapped with future
     auto p = std::make_shared<std::promise<std::vector<std::shared_ptr< dht::Value >>>>();
