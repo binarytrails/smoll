@@ -21,10 +21,14 @@ enum class RegistrationResponse : int { success = 0,
 
 int main(int argc, char * argv[])
 {
-    if (argc < 2){
-        printf("./run <lookup-name>\n");
+    if (argc < 4){
+        printf("./run <address> <account> <password> <username>\n");
         return 1;
     }
+    auto address = argv[1];
+    auto account = argv[2];
+    auto password = argv[3];
+    auto username = argv[4];
 
     const std::string ns = "ns.jami.net";
 
@@ -34,31 +38,43 @@ int main(int argc, char * argv[])
 
     using SharedCallback = std::shared_ptr<DRing::CallbackWrapperBase>;
 
+    // registerName
+    auto nameRegistrationEndedCb = exportable_callback<ConfigurationSignal::NameRegistrationEnded>([&]
+        (const std::string& account_id, int state, const std::string& name){
+            printf("\n============== name register ======================\n");
+            printf("account_id: %s state: %i name: %s\n",
+                   account_id.c_str(), state, name.c_str()
+            );
+            printf("=====================================================\n");
+        });
+    // lookupName & loopkupAddress
     auto registeredNameFoundCb = exportable_callback<ConfigurationSignal::RegisteredNameFound>([&]
         (const std::string& account_id, int state, const std::string& address, const std::string& name){
-            printf("\n=====================================================\n");
+            printf("\n================== lookup ended ===================\n");
             printf("account_id: %s state: %i name: %s\naddress: %s\n",
                    account_id.c_str(), state, name.c_str(), address.c_str()
             );
             printf("=====================================================\n");
         });
 
-    const std::map<std::string, SharedCallback> configEvHandlers = {
-        exportable_callback<ConfigurationSignal::IncomingAccountMessage>([]
-            (const std::string& accountID, const std::string& from, const std::map<std::string, std::string>& payloads){
-            }),
-            registeredNameFoundCb,
-    };
-
     if (!DRing::init(DRing::InitFlag(DRing::DRING_FLAG_DEBUG | DRing::DRING_FLAG_CONSOLE_LOG)))
-        return -1;
+        return 1;
 
+    const std::map<std::string, SharedCallback> configEvHandlers = {
+        nameRegistrationEndedCb,
+        registeredNameFoundCb
+    };
     registerSignalHandlers(configEvHandlers);
 
     if (!DRing::start())
-        return -1;
+        return 1;
 
-    DRing::lookupName(""/*account*/, ns, argv[1]);
+    // 0: lookup address
+    DRing::lookupAddress(""/*account*/, ns, address);
+    // 1: register an existing account
+    printf("RegisterName: %s", DRing::registerName(account, password, username) ? "OK" : "FAIL");
+    // 2: look it up
+    DRing::lookupName(account, ns, username);
 
     while (true){
         std::this_thread::sleep_for(std::chrono::seconds(1));
