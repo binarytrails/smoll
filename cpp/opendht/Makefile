@@ -39,5 +39,8 @@ proxy_runner:
 future_get:
 	${CXX} ${CXXFLAGS} -std=c++14 future-get.cpp -o future-get.out
 
+http:
+	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 http.cpp -o http.out
+
 clean:
 	rm -f *.out
