@@ -47,8 +47,11 @@ int main(int argc, char * argv[])
         logger->d("[get1::donecb] ok=%i", ok);
     });
 
+    // call periodic executing callbacks through dhtnode
     std::this_thread::sleep_for(std::chrono::seconds(2));
     client.periodic(nullptr, 0, nullptr, 0);
+
+    // restart all listeners
     std::this_thread::sleep_for(std::chrono::seconds(20));
     client.connectivityChanged(); // restarts listeners
     std::this_thread::sleep_for(std::chrono::seconds(20));

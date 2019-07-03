@@ -33,7 +33,7 @@ int main(int argc, char * argv[])
     // setup http_parser & callbacks
     auto parser_s = std::make_shared<http_parser_settings>();
     http_parser_settings_init(parser_s.get());
-    parser_s->on_status = []( http_parser * parser, const char * at, size_t length ) -> int {
+    parser_s->on_status = []( http_parser * parser, const char* at, size_t length ) -> int {
         printf("on status cb code=%i message=%s\n", parser->status_code, std::string(at, length).c_str());
         return 0;
     };
@@ -48,9 +48,8 @@ int main(int argc, char * argv[])
     auto parser = std::make_shared<http_parser>();
     http_parser_init(parser.get(), HTTP_RESPONSE);
 
-    std::
     // create client
-    http::Client client(ctx, host, service, logger);
+    http::Client client(ctx, host, service, logger, false/*resolve*/);
 
     // build request
     auto connection = restinio::http_connection_header_t::close;
@@ -59,8 +58,21 @@ int main(int argc, char * argv[])
 
     // ensure resolving completion
     client.async_resolve(host, service, [&](const asio::error_code &ec){
-        // send the request
-        auto connid = client.post_request(request, parser, parser_s);
+        // connect
+        client.async_connect([&client, request, parser, parser_s]
+                             (std::shared_ptr<http::Connection> conn){
+            // send the request
+            client.async_request(conn, request, parser, parser_s);
+        });
+    });
+
+    client.async_resolve(host, service, [&](const asio::error_code &ec){
+        // connect
+        client.async_connect([&client, request, parser, parser_s]
+                             (std::shared_ptr<http::Connection> conn){
+            // timeout the connection
+            client.set_connection_timeout(conn->id(), std::chrono::seconds(0));
+        });
     });
 
     auto work = asio::make_work_guard(ctx);
