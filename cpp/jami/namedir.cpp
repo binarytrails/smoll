@@ -74,7 +74,13 @@ int main(int argc, char * argv[])
     // 1: register an existing account
     printf("RegisterName: %s", DRing::registerName(account, password, username) ? "OK" : "FAIL");
     // 2: look it up
-    DRing::lookupName(account, ns, username);
+    //  note: if you specify the account it will just return false
+    DRing::lookupName("", ns, username);
+    
+    // 3: verify cache
+    //std::this_thread::sleep_for(std::chrono::seconds(5));
+    //DRing::lookupAddress(""/*account*/, ns, address);
+    //DRing::lookupName(account, ns, username);
 
     while (true){
         std::this_thread::sleep_for(std::chrono::seconds(1));
