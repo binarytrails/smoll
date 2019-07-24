@@ -8,75 +8,65 @@
 
 int main(int argc, char * argv[])
 {
-    if (argc < 3){
-        printf("./run <host> <service>\n");
+    if (argc < 4){
+        printf("./run <host> <port> <target>\n");
         return 1;
     }
-    std::string host = argv[1];
-    std::string service = argv[2];
-    const std::string target = "/";
-
-    // init client context
+    asio::io_context io_context;
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
-    asio::io_context ctx;
+    auto request = std::make_shared<http::Request>(io_context, argv[1], argv[2], logger);
 
-    // create http request
     restinio::http_request_header_t header;
-    header.request_target(target);
-    restinio::http_header_fields_t header_fields;
+    header.request_target(argv[3]);
     header.method(restinio::http_method_get());
-    header_fields.append_field(restinio::http_field_t::host, (host + ":" + service).c_str());
-    header_fields.append_field(restinio::http_field_t::user_agent, "RESTinio client");
-    header_fields.append_field(restinio::http_field_t::accept, "*/*");
-    //header_fields.append_field(restinio::http_field_t::content_type, "application/json");
+    request->set_header(header);
 
-    // setup http_parser & callbacks
-    auto parser_s = std::make_shared<http_parser_settings>();
-    http_parser_settings_init(parser_s.get());
-    parser_s->on_status = []( http_parser * parser, const char* at, size_t length ) -> int {
-        printf("on status cb code=%i message=%s\n", parser->status_code, std::string(at, length).c_str());
-        return 0;
-    };
-    parser_s->on_body = []( http_parser * parser, const char * at, size_t length ) -> int {
-        printf("on body cb  message={%s} ", std::string(at, length).c_str());
-        return 0;
-    };
-    parser_s->on_message_complete = [](http_parser * parser) -> int {
-        printf("on message complete cb\n");
-        return 0;
-    };
-    auto parser = std::make_shared<http_parser>();
-    http_parser_init(parser.get(), HTTP_RESPONSE);
+    const std::string host = std::string(argv[1]) + ":" + std::string(argv[2]);
+    request->set_header_field(restinio::http_field_t::host, host.c_str());
+    request->set_header_field(restinio::http_field_t::user_agent, "RESTinio client");
+    request->set_header_field(restinio::http_field_t::accept, "*/*");
+    request->set_header_field(restinio::http_field_t::content_type, "application/json");
 
-    // create client
-    http::Client client(ctx, host, service, logger, false/*resolve*/);
-
-    // build request
-    auto connection = restinio::http_connection_header_t::close;
-    auto request = client.create_request(header, header_fields, connection, ""/*body*/);
-    printf(request.c_str());
-
-    // ensure resolving completion
-    client.async_resolve(host, service, [&](const asio::error_code &ec){
-        // connect
-        client.async_connect([&client, request, parser, parser_s]
-                             (std::shared_ptr<http::Connection> conn){
-            // send the request
-            client.async_request(conn, request, parser, parser_s);
-        });
+    request->add_on_status_callback([logger](unsigned int status_code){
+        logger->d("status: %i", status_code);
     });
-
-    client.async_resolve(host, service, [&](const asio::error_code &ec){
-        // connect
-        client.async_connect([&client, request, parser, parser_s]
-                             (std::shared_ptr<http::Connection> conn){
-            // timeout the connection
-            client.set_connection_timeout(conn->id(), std::chrono::seconds(0));
-        });
+    request->add_on_body_callback([logger](const char* at, size_t length){
+        try {
+            Json::CharReaderBuilder rbuilder;
+            auto body = std::string(at, length);
+            // one value per body line
+            std::string data_line;
+            std::stringstream body_stream(body);
+            while (std::getline(body_stream, data_line, '\n')){
+                std::string err;
+                Json::Value json;
+                auto* char_data = static_cast<const char*>(&data_line[0]);
+                auto reader = std::unique_ptr<Json::CharReader>(rbuilder.newCharReader());
+                if (!reader->parse(char_data, char_data + data_line.size(), &json, &err)){
+                    logger->e("parsing failed");
+                    return;
+                }
+                std::cout << json << std::endl;
+            }
+        } catch(const std::exception& e) {
+            logger->e("body parsing error: %s", e.what());
+        }
     });
+    request->add_on_state_change_callback([logger, &io_context]
+                                          (const http::Request::State state, const http::Response response){
+        logger->w("state=%i code=%i", state, response.status_code);
+        if (state == http::Request::State::DONE){
+            if (response.status_code != 200)
+                logger->e("failed with code=%i", response.status_code);
+            else
+                logger->w("request done!");
+            io_context.stop();
+        }
+    });
+    request->send();
 
-    auto work = asio::make_work_guard(ctx);
-    ctx.run();
+    auto work = asio::make_work_guard(io_context);
+    io_context.run();
 
     return 0;
 }

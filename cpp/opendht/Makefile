@@ -2,7 +2,7 @@
 #! @author Vsevolod Ivanov
 
 CXX=g++
-CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g \
+CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g -lasan \
 		-lopendht -lgnutls -pthread -ljsoncpp -I/usr/include/opendht \
 		-DOPENDHT_JSONCPP
 
