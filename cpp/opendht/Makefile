@@ -2,7 +2,7 @@
 #! @author Vsevolod Ivanov
 
 CXX=g++
-CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g -lasan \
+CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g \
 		-lopendht -lgnutls -pthread -ljsoncpp -I/usr/include/opendht \
 		-DOPENDHT_JSONCPP
 
@@ -41,6 +41,9 @@ future_get:
 
 http:
 	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 http.cpp -o http.out
+
+https:
+	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -DOPENDHT_PROXY_OPENSSL -lssl -lcrypto http.cpp -o https.out
 
 clean:
 	rm -f *.out
