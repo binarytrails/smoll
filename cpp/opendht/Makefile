@@ -43,7 +43,7 @@ http:
 	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 http.cpp -o http.out
 
 https:
-	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -DOPENDHT_PROXY_OPENSSL -lssl -lcrypto http.cpp -o https.out
+	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lssl -lcrypto http.cpp -o https.out
 
 clean:
 	rm -f *.out

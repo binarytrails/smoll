@@ -52,12 +52,8 @@ int main(int argc, char * argv[])
             logger->e("body parsing error: %s", e.what());
         }
     });
-#ifdef OPENDHT_PROXY_OPENSSL
     std::weak_ptr<http::Request> wreq = request;
     request->add_on_state_change_callback([logger, &io_context, wreq]
-#else
-    request->add_on_state_change_callback([logger, &io_context]
-#endif
                                           (const http::Request::State state, const http::Response response){
         logger->w("state=%i code=%i", state, response.status_code);
         if (state == http::Request::State::DONE){
@@ -65,10 +61,8 @@ int main(int argc, char * argv[])
                 logger->e("failed with code=%i", response.status_code);
             else
                 logger->w("request done!");
-#ifdef OPENDHT_PROXY_OPENSSL
             auto request = wreq.lock();
             request.reset();
-#endif
             io_context.stop();
         }
     });
