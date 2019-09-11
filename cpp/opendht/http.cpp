@@ -8,24 +8,30 @@
 
 int main(int argc, char * argv[])
 {
-    if (argc < 4){
-        printf("./run <host> <port> <target>\n");
+    if (argc < 2){
+        printf("./run <url> <body>\n");
         return 1;
     }
+    std::string url = argv[1];
+    std::string body;
+    if (argv[2])
+        body = argv[2];
+
+    using namespace dht;
     asio::io_context io_context;
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
-    auto request = std::make_shared<http::Request>(io_context, argv[1], argv[2], logger);
+    auto request = std::make_shared<http::Request>(io_context, url, logger);
 
     restinio::http_request_header_t header;
-    header.request_target(argv[3]);
     header.method(restinio::http_method_get());
     request->set_header(header);
-
-    const std::string host = std::string(argv[1]) + ":" + std::string(argv[2]);
-    request->set_header_field(restinio::http_field_t::host, host.c_str());
+    request->set_header_field(restinio::http_field_t::host, url);
     request->set_header_field(restinio::http_field_t::user_agent, "RESTinio client");
     request->set_header_field(restinio::http_field_t::accept, "*/*");
     request->set_header_field(restinio::http_field_t::content_type, "application/json");
+    request->set_header_field(restinio::http_field_t::expect, "100-continue");
+    if (!body.empty())
+        request->set_body(body);
 
     request->add_on_status_callback([logger](unsigned int status_code){
         logger->d("status: %i", status_code);
@@ -56,7 +62,11 @@ int main(int argc, char * argv[])
     request->add_on_state_change_callback([logger, &io_context, wreq]
                                           (const http::Request::State state, const http::Response response){
         logger->w("state=%i code=%i", state, response.status_code);
-        if (state == http::Request::State::DONE){
+        if (state == http::Request::State::RECEIVING){
+            auto request = wreq.lock();
+            std::cout << "request:\n" << request->to_string() << std::endl;
+        }
+        else if (state == http::Request::State::DONE){
             if (response.status_code != 200)
                 logger->e("failed with code=%i", response.status_code);
             else

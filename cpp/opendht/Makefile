@@ -3,8 +3,8 @@
 
 CXX=g++
 CXXFLAGS=-Wall -Wextra -Wfatal-errors -pedantic -g \
-		-lopendht -lgnutls -pthread -ljsoncpp -I/usr/include/opendht \
-		-DOPENDHT_JSONCPP
+		-lasan -lopendht -lgnutls -pthread -ljsoncpp -I/usr/include/opendht \
+		-DOPENDHT_JSONCPP -DASIO_STANDALONE
 
 putget:
 	${CXX} ${CXXFLAGS} -std=c++11 putget.cpp -o putget.out
