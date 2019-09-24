@@ -22,5 +22,11 @@ if __name__ == "__main__":
     while True:
         data, addr = sock.recvfrom(1024)
         msg = msgpack.unpackb(data)
+        for k in [b'dht', b'jami']:
+            try: # decode hash values
+                hbytes = msg[k][0]
+                msg[k][0] = hbytes.hex()
+            except Exception as e:
+                pass
         print(addr, ": ", msg)
 
