@@ -40,10 +40,13 @@ future_get:
 	${CXX} ${CXXFLAGS} -std=c++14 future-get.cpp -o future-get.out
 
 http:
-	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 http.cpp -o http.out
+	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lcrypto http.cpp -o http.out
 
 https:
 	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lssl -lcrypto http.cpp -o https.out
+
+https_2waystls:
+	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lssl -lcrypto https_2waystls.cpp -o https_2waystls.out
 
 clean:
 	rm -f *.out
