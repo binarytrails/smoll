@@ -28,7 +28,7 @@ int main(int argc, char * argv[])
 {
 
     if (argc < 4){
-        printf("./binary client.key client.crt ca.crt\n");
+        printf("./binary client.key client.crt ca.pem\n");
         return 1;
     }
     using namespace dht;
