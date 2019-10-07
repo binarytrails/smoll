@@ -42,6 +42,9 @@ future_get:
 http:
 	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lcrypto http.cpp -o http.out
 
+http_errors:
+	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lcrypto http_errors.cpp -o http_errors.out
+
 https:
 	${CXX} ${CXXFLAGS} -lhttp_parser -std=c++14 -lssl -lcrypto http.cpp -o https.out
 
