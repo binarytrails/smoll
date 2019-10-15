@@ -8,7 +8,7 @@ valid_ca:
 	${CXX} ${CXXFLAGS} -std=c++11 valid_ca.cpp -o valid_ca.out
 
 ocsp:
-	${CXX} ${CXXFLAGS} -std=c++11 ocsp.cpp -o ocsp.out
+	${CXX} ${CXXFLAGS} -std=c++14 -lopendht -lssl -lcrypto -lpthread -DASIO_STANDALONE ocsp.cpp -o ocsp.out
 
 clean:
 	rm -f *.out
