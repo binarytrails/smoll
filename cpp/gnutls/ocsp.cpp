@@ -65,28 +65,85 @@ static void ocsp_request(gnutls_datum_t * rdata, gnutls_x509_crt_t cert,
                          gnutls_x509_crt_t issuer, gnutls_datum_t *nonce)
 {
     gnutls_ocsp_req_t req;
-    CHECK(gnutls_ocsp_req_init(&req));
-    CHECK(gnutls_ocsp_req_add_cert(req, GNUTLS_DIG_SHA1, issuer, cert));
-    CHECK(gnutls_ocsp_req_set_nonce(req, 0, nonce));
-    CHECK(gnutls_ocsp_req_export(req, rdata));
-    gnutls_ocsp_req_deinit(req);
-    return;
+    int ret = gnutls_ocsp_req_init(&req);
+    if (ret < 0){
+        printf("ocsp_req_init: %s\n", gnutls_strerror(ret));
+        return;
+    }
+    ret = gnutls_ocsp_req_add_cert(req, GNUTLS_DIG_SHA1, issuer, cert);
+    if (ret < 0) {
+        printf("ocsp_req_add_cert: %s\n", gnutls_strerror(ret));
+        return;
+    }
+    ret = gnutls_ocsp_req_add_cert(req, GNUTLS_DIG_SHA1, issuer, cert);
+    if (ret < 0) {
+        printf("ocsp_req_add_cert: %s\n", gnutls_strerror(ret));
+        return;
+    }
+    if (nonce) {
+        ret = gnutls_ocsp_req_set_nonce(req, 0, nonce);
+        if (ret < 0) {
+            printf("ocsp_req_set_nonce: %s\n", gnutls_strerror(ret));
+            return;
+        }
+    }
+    ret = gnutls_ocsp_req_export(req, rdata);
+    if (ret) {
+        printf("ocsp_req_export: %s\n", gnutls_strerror(ret));
+        return;
+    }
 }
-/*
-size_t get_ocsp_data(void *buffer, size_t size, size_t nmemb, void *userp)
+
+static int ocsp_response(gnutls_datum_t * data, gnutls_x509_crt_t cert,
+                         gnutls_x509_crt_t signer, gnutls_datum_t *nonce)
 {
-    gnutls_datum_t *ud = userp;
-    size *= nmemb;
-    ud->data = realloc(ud->data, size + ud->size);
-    if (ud->data == NULL) {
-        printf(stderr, "Not enough memory for the request\n");
+    gnutls_ocsp_resp_t resp;
+    int ret;
+    unsigned verify;
+    gnutls_datum_t rnonce;
+    ret = gnutls_ocsp_resp_init(&resp);
+    if (ret < 0)
+        exit(1);
+    ret = gnutls_ocsp_resp_import(resp, data);
+    if (ret < 0)
+        exit(1);
+    ret = gnutls_ocsp_resp_check_crt(resp, 0, cert);
+    if (ret < 0)
+        exit(1);
+    ret = gnutls_ocsp_resp_get_nonce(resp, NULL, &rnonce);
+    if (ret < 0)
+        exit(1);
+    if (rnonce.size != nonce->size || memcmp(nonce->data, rnonce.data,
+        nonce->size) != 0) {
         exit(1);
     }
-    memcpy(&ud->data[ud->size], buffer, size);
-    ud->size += size;
-    return size;
+    ret = gnutls_ocsp_resp_verify_direct(resp, signer, &verify, 0);
+    if (ret < 0)
+        exit(1);
+    printf("Verifying OCSP Response: ");
+    if (verify == 0)
+        printf("Verification success!\n");
+    else
+        printf("Verification error!\n");
+    if (verify & GNUTLS_OCSP_VERIFY_SIGNER_NOT_FOUND)
+        printf("Signer cert not found\n");
+    if (verify & GNUTLS_OCSP_VERIFY_SIGNER_KEYUSAGE_ERROR)
+        printf("Signer cert keyusage error\n");
+    if (verify & GNUTLS_OCSP_VERIFY_UNTRUSTED_SIGNER)
+        printf("Signer cert is not trusted\n");
+    if (verify & GNUTLS_OCSP_VERIFY_INSECURE_ALGORITHM)
+        printf("Insecure algorithm\n");
+    if (verify & GNUTLS_OCSP_VERIFY_SIGNATURE_FAILURE)
+        printf("Signature failure\n");
+    if (verify & GNUTLS_OCSP_VERIFY_CERT_NOT_ACTIVATED)
+        printf("Signer cert not yet activated\n");
+    if (verify & GNUTLS_OCSP_VERIFY_CERT_EXPIRED)
+        printf("Signer cert expired\n");
+    gnutls_free(rnonce.data);
+    gnutls_ocsp_resp_deinit(resp);
+    return verify;
 }
-*/
+
 int main(int argc, char* argv[])
 {
     /* -----------------------------------
@@ -122,7 +179,7 @@ int main(int argc, char* argv[])
     switch (ret){
         case 0:
             printf("CA issuers OCSP URI: %s\n", tmp.data);
-            gnutls_free(tmp.data);
+            //gnutls_free(tmp.data);
             break;
         case GNUTLS_E_UNKNOWN_ALGORITHM:
         case GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE:
@@ -136,8 +193,11 @@ int main(int argc, char* argv[])
     // Generate OCSP request
     unsigned char noncebuf[23];
     gnutls_datum_t nonce = { noncebuf, sizeof(noncebuf) };
-    CHECK(gnutls_rnd(GNUTLS_RND_NONCE, nonce.data, nonce.size));
-
+    ret = gnutls_rnd(GNUTLS_RND_NONCE, nonce.data, nonce.size);
+    if (ret < 0) {
+        printf("gnutls_rnd: %s\n", gnutls_strerror(ret));
+        return -1;
+    }
     gnutls_datum_t ocsp_req;
     ocsp_request(&ocsp_req, cert, issuer, &nonce);
 
@@ -156,7 +216,6 @@ int main(int argc, char* argv[])
     request->set_header_field(restinio::http_field_t::accept, "*/*");
     request->set_header_field(restinio::http_field_t::content_type, "application/ocsp-request");
 
-    // TODO properly append unsigned int data like with CURLOPT_POSTFIELDS
     request->set_body(reinterpret_cast<char*>(ocsp_req.data));
 
     std::weak_ptr<http::Request> wreq = request;
@@ -179,7 +238,13 @@ int main(int argc, char* argv[])
     io_context.run();
 
     // Read OCSP response
-    // TODO
+    //int v = ocsp_response(&ud, cert, signer, &nonce);
+    //printf("= verified: %i\n", v);
+
+    gnutls_x509_crt_deinit(cert);
+    gnutls_x509_crt_deinit(issuer);
+    gnutls_x509_crt_deinit(signer);
+    gnutls_global_deinit();
 
     printf("= success\n");
     return 0;
