@@ -211,17 +211,20 @@ int main(int argc, char* argv[])
     request->add_on_state_change_callback([logger, &io_context, wreq]
                                           (const http::Request::State state, const http::Response response){
         logger->w("HTTP Request state=%i status_code=%i", state, response.status_code);
-        auto request = wreq.lock();
-        logger->w("HTTP Request:\n%s", request->to_string().c_str());
-        if (state == http::Request::State::SENDING)
-            request->get_connection()->timeout(std::chrono::seconds(1)); // fixme
+        if (state == http::Request::State::SENDING){
+            auto request = wreq.lock();
+            logger->w("HTTP Request:\n%s", request->to_string().c_str());
+            request->get_connection()->timeout(std::chrono::seconds(1),
+                [request](const asio::error_code& ec){
+                    request->cancel();
+                });
+        }
         if (state != http::Request::State::DONE)
             return;
         if (response.status_code != 200)
             logger->e("HTTP Request Failed with status_code=%i", response.status_code);
         else
             logger->w("HTTP Request done!");
-        request.reset();
         io_context.stop();
     });
     request->send();
