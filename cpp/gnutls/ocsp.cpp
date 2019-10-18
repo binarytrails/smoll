@@ -98,11 +98,12 @@ static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
         exit(1);
     }
     printf("%s\n", dat.data);
-    //gnutls_free(dat.data);
+    gnutls_free(dat.data);
     /*
     ret = gnutls_ocsp_resp_check_crt(resp, 0, cert);
     if (ret < 0)
         exit(1);
+    */
     ret = gnutls_ocsp_resp_get_nonce(resp, NULL, &rnonce);
     if (ret < 0)
         exit(1);
@@ -110,7 +111,6 @@ static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
         nonce->size) != 0){
         exit(1);
     }
-    */
     ret = gnutls_ocsp_resp_verify_direct(resp, signer, &verify, 0);
     if (ret < 0)
         exit(1);
@@ -136,24 +136,6 @@ static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
     gnutls_free(rnonce.data);
     gnutls_ocsp_resp_deinit(resp);
     return verify;
-}
-
-static size_t get_data(void *buf, size_t size, size_t nmemb, void *userp)
-{
-	gnutls_datum_t *ud = userp;
-
-	size *= nmemb;
-
-	ud->data = realloc(ud->data, size + ud->size);
-	if (ud->data == NULL) {
-		fprintf(stderr, "Not enough memory for the request\n");
-		exit(1);
-	}
-
-	memcpy(&ud->data[ud->size], buf, size);
-	ud->size += size;
-
-	return size;
 }
 
 int main(int argc, char* argv[])
@@ -281,24 +263,8 @@ int main(int argc, char* argv[])
     gnutls_datum_t ocsp_resp;
     gnutls_datum_t ud;
 
-    get_data(body.c_str(), body.size(), 1, &ud);
-
-    //std::stringstream resp;
-    //resp.write(ud.data, ud.size);
-    //std::cout << resp.str() << std::endl;
-
-    unsigned char* p = memmem(ud.data, ud.size, "\r\n\r\n", 4);
-	if (p == NULL) {
-		printf("Cannot interpret HTTP response\n");
-        exit(1);
-	}
-    p += 4;
-	ocsp_resp.size = ud.size - (p - ud.data);
-	ocsp_resp.data = malloc(ocsp_resp.size);
-	memcpy(ocsp_resp.data, p, ocsp_resp.size);
-
-    //ocsp_resp.data = body.c_str();
-    //ocsp_resp.size = content_length;
+    ocsp_resp.data = body.c_str();
+    ocsp_resp.size = body.size();
 
     int v = ocsp_response(&ocsp_resp, cert, signer, &nonce);
 	gnutls_x509_crt_deinit(signer);
