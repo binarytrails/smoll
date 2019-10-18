@@ -99,11 +99,11 @@ static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
     }
     printf("%s\n", dat.data);
     gnutls_free(dat.data);
-    /*
     ret = gnutls_ocsp_resp_check_crt(resp, 0, cert);
-    if (ret < 0)
+    if (ret < 0){
+        printf("ocsp_resp_check_crt: %s\n", gnutls_strerror(ret));
         exit(1);
-    */
+    }
     ret = gnutls_ocsp_resp_get_nonce(resp, NULL, &rnonce);
     if (ret < 0)
         exit(1);
@@ -218,14 +218,14 @@ int main(int argc, char* argv[])
     request->set_header_field(restinio::http_field_t::content_type, "application/ocsp-request");
     {
         std::stringstream body;
-        body.write(ocsp_req.data, ocsp_req.size);
+        body.write((const char*)ocsp_req.data, ocsp_req.size);
         std::cout << body.str() << std::endl;
         gnutls_free(ocsp_req.data);
         request->set_body(body.str());
     }
     request->set_connection_type(restinio::http_connection_header_t::close);
 
-    const http::Response http_resp;
+    http::Response http_resp;
     std::weak_ptr<http::Request> wreq = request;
     request->add_on_state_change_callback([logger, &io_context, wreq, &http_resp]
                                           (const http::Request::State state, const http::Response response){
@@ -261,9 +261,7 @@ int main(int argc, char* argv[])
 	fwrite(body.c_str(), 1, body.size(), outfile);
 
     gnutls_datum_t ocsp_resp;
-    gnutls_datum_t ud;
-
-    ocsp_resp.data = body.c_str();
+    ocsp_resp.data = (unsigned char*)body.c_str();
     ocsp_resp.size = body.size();
 
     int v = ocsp_response(&ocsp_resp, cert, signer, &nonce);
