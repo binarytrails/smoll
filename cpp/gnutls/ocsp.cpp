@@ -70,19 +70,36 @@ void generate_request(gnutls_x509_crt_t cert, gnutls_x509_crt_t issuer,
 	return;
 }
 
-static int ocsp_response(gnutls_datum_t * data, gnutls_x509_crt_t cert,
-                         gnutls_x509_crt_t signer, gnutls_datum_t *nonce)
+static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
+                         gnutls_x509_crt_t signer, gnutls_datum_t* nonce)
 {
     gnutls_ocsp_resp_t resp;
     int ret;
     unsigned verify;
     gnutls_datum_t rnonce;
+    if (data->size == 0) {
+		printf("Received empty response\n");
+		exit(1);
+	}
     ret = gnutls_ocsp_resp_init(&resp);
-    if (ret < 0)
+    if (ret < 0){
+        printf("ocsp_resp_init: %s\n", gnutls_strerror(ret));
         exit(1);
+    }
     ret = gnutls_ocsp_resp_import(resp, data);
-    if (ret < 0)
+    if (ret < 0){
+        printf("ocsp_resp_import: %s\n", gnutls_strerror(ret));
         exit(1);
+    }
+    gnutls_datum_t dat;
+    ret = gnutls_ocsp_resp_print(resp, GNUTLS_OCSP_PRINT_COMPACT, &dat);
+    if (ret < 0) {
+        printf("ocsp_resp_print: %s\n", gnutls_strerror(ret));
+        exit(1);
+    }
+    printf("%s\n", dat.data);
+    //gnutls_free(dat.data);
+    /*
     ret = gnutls_ocsp_resp_check_crt(resp, 0, cert);
     if (ret < 0)
         exit(1);
@@ -93,6 +110,7 @@ static int ocsp_response(gnutls_datum_t * data, gnutls_x509_crt_t cert,
         nonce->size) != 0){
         exit(1);
     }
+    */
     ret = gnutls_ocsp_resp_verify_direct(resp, signer, &verify, 0);
     if (ret < 0)
         exit(1);
@@ -118,6 +136,24 @@ static int ocsp_response(gnutls_datum_t * data, gnutls_x509_crt_t cert,
     gnutls_free(rnonce.data);
     gnutls_ocsp_resp_deinit(resp);
     return verify;
+}
+
+static size_t get_data(void *buf, size_t size, size_t nmemb, void *userp)
+{
+	gnutls_datum_t *ud = userp;
+
+	size *= nmemb;
+
+	ud->data = realloc(ud->data, size + ud->size);
+	if (ud->data == NULL) {
+		fprintf(stderr, "Not enough memory for the request\n");
+		exit(1);
+	}
+
+	memcpy(&ud->data[ud->size], buf, size);
+	ud->size += size;
+
+	return size;
 }
 
 int main(int argc, char* argv[])
@@ -151,7 +187,7 @@ int main(int argc, char* argv[])
     // load_cert(file, max, flags |= GNUTLS_X509_CRT_LIST_SORT
     cert = load_cert(cert_file.c_str());
     issuer = load_cert(issuer_file.c_str());
-    //signer = load_cert(signer_file.c_str());
+    signer = load_cert(signer_file.c_str());
 
     for (int seq = 0;; seq++)
     {
@@ -207,8 +243,9 @@ int main(int argc, char* argv[])
     }
     request->set_connection_type(restinio::http_connection_header_t::close);
 
+    const http::Response http_resp;
     std::weak_ptr<http::Request> wreq = request;
-    request->add_on_state_change_callback([logger, &io_context, wreq]
+    request->add_on_state_change_callback([logger, &io_context, wreq, &http_resp]
                                           (const http::Request::State state, const http::Response response){
         logger->w("HTTP Request state=%i status_code=%i", state, response.status_code);
         if (state == http::Request::State::SENDING){
@@ -225,6 +262,7 @@ int main(int argc, char* argv[])
             logger->e("HTTP Request Failed with status_code=%i", response.status_code);
         else
             logger->w("HTTP Request done!");
+        http_resp = response;
         io_context.stop();
     });
     request->send();
@@ -232,8 +270,39 @@ int main(int argc, char* argv[])
     io_context.run();
 
     // Read OCSP response
-    //int v = ocsp_response(&ud, cert, signer, &nonce);
-    //printf("= verified: %i\n", v);
+    auto body = http_resp.body;
+    unsigned int content_length = stoul(http_resp.headers["Content-Length"]);
+    std::cout << "Response body.size=" << body.size() << " Content-Length=" << content_length << std::endl;
+
+    // works with: cat ocsp-response | ocsptool --response-info
+    FILE* outfile = fopen("ocsp-response", "wb");
+	fwrite(body.c_str(), 1, body.size(), outfile);
+
+    gnutls_datum_t ocsp_resp;
+    gnutls_datum_t ud;
+
+    get_data(body.c_str(), body.size(), 1, &ud);
+
+    //std::stringstream resp;
+    //resp.write(ud.data, ud.size);
+    //std::cout << resp.str() << std::endl;
+
+    unsigned char* p = memmem(ud.data, ud.size, "\r\n\r\n", 4);
+	if (p == NULL) {
+		printf("Cannot interpret HTTP response\n");
+        exit(1);
+	}
+    p += 4;
+	ocsp_resp.size = ud.size - (p - ud.data);
+	ocsp_resp.data = malloc(ocsp_resp.size);
+	memcpy(ocsp_resp.data, p, ocsp_resp.size);
+
+    //ocsp_resp.data = body.c_str();
+    //ocsp_resp.size = content_length;
+
+    int v = ocsp_response(&ocsp_resp, cert, signer, &nonce);
+	gnutls_x509_crt_deinit(signer);
+    printf("= verified: %i\n", v);
 
     gnutls_global_deinit();
 
