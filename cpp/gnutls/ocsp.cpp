@@ -144,21 +144,16 @@ int main(int argc, char* argv[])
      * Online Certificate Service Protocol
      * -----------------------------------
      */
-    if (argc < 5){
-        printf("./binary <cert_file> <issuer_file> <signer_file> <hostname>\n");
+    if (argc < 4){
+        printf("./binary <cert_file> <issuer_file> <signer_file>\n");
         return 1;
     }
     int ret;
     std::string cert_file = argv[1];
     std::string issuer_file = argv[2];
     std::string signer_file = argv[3];
-    std::string request_file = argv[4];
-    std::string hostname;
-    if (argc > 4)
-        hostname = argv[4];
-    //else certificate chain gotta go by sequence in gnutls_x509_crt_get_authority_info_access
-    printf("cert: %s issuer: %s signer: %s hostname: %s\n",
-            cert_file.c_str(), issuer_file.c_str(), signer_file.c_str(), hostname.c_str());
+    printf("cert: %s issuer: %s signer: %s\n",
+            cert_file.c_str(), issuer_file.c_str(), signer_file.c_str());
 
     // Initialize GnuTLS
     ret = gnutls_global_init();
@@ -171,6 +166,13 @@ int main(int argc, char* argv[])
     issuer = load_cert(issuer_file.c_str());
     signer = load_cert(signer_file.c_str());
 
+    auto dcert = dht::crypto::Certificate(cert);
+    auto dissuer = dht::crypto::Certificate(issuer);
+    auto dsigner = dht::crypto::Certificate(signer);
+    printf("Certificate: %s\nIssuer: %s\nSigner: %s\n",
+           dcert.getUID().c_str(), dissuer.getUID().c_str(), dsigner.getUID().c_str());
+
+    std::string aia_uri;
     for (int seq = 0;; seq++)
     {
         std::cout << "seq: " << seq << std::endl;
@@ -187,10 +189,13 @@ int main(int argc, char* argv[])
             printf( "error: %s\n", gnutls_strerror(ret));
             exit(1);
         }
-        printf("CA issuers URI: %.*s\n", tmp.size, tmp.data);
+        std::stringstream aia_stream;
+        aia_stream.write((const char*)tmp.data, tmp.size);
+        aia_uri = aia_stream.str();
         gnutls_free(tmp.data);
         break;
     }
+    printf("CA issuers URI: %s\n", aia_uri.c_str());
 
     // Generate OCSP request
     unsigned char noncebuf[23];
@@ -209,10 +214,9 @@ int main(int argc, char* argv[])
     using namespace dht;
     asio::io_context io_context;
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
-    auto request = std::make_shared<http::Request>(io_context, "http://127.0.0.1:8080", logger);
+    auto request = std::make_shared<http::Request>(io_context, aia_uri, logger);
 
     request->set_method(restinio::http_method_post());
-    request->set_header_field(restinio::http_field_t::host, "127.0.0.1");
     request->set_header_field(restinio::http_field_t::user_agent, "OCSP client");
     request->set_header_field(restinio::http_field_t::accept, "*/*");
     request->set_header_field(restinio::http_field_t::content_type, "application/ocsp-request");
