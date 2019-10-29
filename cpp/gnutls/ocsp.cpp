@@ -92,7 +92,7 @@ static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
         exit(1);
     }
     gnutls_datum_t dat;
-    ret = gnutls_ocsp_resp_print(resp, GNUTLS_OCSP_PRINT_COMPACT, &dat);
+    ret = gnutls_ocsp_resp_print(resp, GNUTLS_OCSP_PRINT_FULL, &dat);
     if (ret < 0) {
         printf("ocsp_resp_print: %s\n", gnutls_strerror(ret));
         exit(1);
@@ -207,13 +207,12 @@ int main(int argc, char* argv[])
     }
     gnutls_datum_t ocsp_req;
 	generate_request(cert, issuer, &ocsp_req, &nonce);
-	gnutls_x509_crt_deinit(cert);
-	gnutls_x509_crt_deinit(issuer);
 
     // Send OCSP request
     using namespace dht;
     asio::io_context io_context;
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
+    //aia_uri = "http://192.168.49.120:8080/api/auth/ocsp";
     auto request = std::make_shared<http::Request>(io_context, aia_uri, logger);
 
     request->set_method(restinio::http_method_post());
@@ -221,11 +220,16 @@ int main(int argc, char* argv[])
     request->set_header_field(restinio::http_field_t::accept, "*/*");
     request->set_header_field(restinio::http_field_t::content_type, "application/ocsp-request");
     {
-        std::stringstream body;
-        body.write((const char*)ocsp_req.data, ocsp_req.size);
-        std::cout << body.str() << std::endl;
+        std::string body;
+        std::stringstream body_stream;
+        body_stream.write((const char*)ocsp_req.data, ocsp_req.size);
+        body = body_stream.str();
+        std::cout << body << std::endl;
+        request->set_body(body);
+        std::ofstream ocsp_req_f ("ocsp-request.bin", std::ios::out | std::ios::binary);
+        ocsp_req_f.write (body.c_str(), body.size());
+        ocsp_req_f.close();
         gnutls_free(ocsp_req.data);
-        request->set_body(body.str());
     }
     request->set_connection_type(restinio::http_connection_header_t::close);
 
@@ -234,9 +238,9 @@ int main(int argc, char* argv[])
     request->add_on_state_change_callback([logger, &io_context, wreq, &http_resp]
                                           (const http::Request::State state, const http::Response response){
         logger->w("HTTP Request state=%i status_code=%i", state, response.status_code);
+        auto request = wreq.lock();
+        logger->w("HTTP Request:\n%s", request->to_string().c_str());
         if (state == http::Request::State::SENDING){
-            auto request = wreq.lock();
-            logger->w("HTTP Request:\n%s", request->to_string().c_str());
             request->get_connection()->timeout(std::chrono::seconds(1),
                 [request](const asio::error_code& ec){
                     request->cancel();
@@ -244,6 +248,9 @@ int main(int argc, char* argv[])
         }
         if (state != http::Request::State::DONE)
             return;
+        for (auto& it: response.headers)
+            std::cout << it.first << ": " << it.second << std::endl;
+        std::cout << response.body << std::endl;
         if (response.status_code != 200)
             logger->e("HTTP Request Failed with status_code=%i", response.status_code);
         else
@@ -258,22 +265,21 @@ int main(int argc, char* argv[])
     // Read OCSP response
     auto body = http_resp.body;
     unsigned int content_length = stoul(http_resp.headers["Content-Length"]);
-    std::cout << "Response body.size=" << body.size() << " Content-Length=" << content_length << std::endl;
+    std::cout << "Response body.size=" << body.size() << " Content-Length=" << content_length
+              << std::endl << body << std::endl;
 
     // works with: cat ocsp-response | ocsptool --response-info
-    FILE* outfile = fopen("ocsp-response", "wb");
-	fwrite(body.c_str(), 1, body.size(), outfile);
+    std::ofstream ocsp_resp_f ("ocsp-response.bin", std::ios::out | std::ios::binary);
+    ocsp_resp_f.write (body.c_str(), body.size());
+    ocsp_resp_f.close();
 
     gnutls_datum_t ocsp_resp;
     ocsp_resp.data = (unsigned char*)body.c_str();
     ocsp_resp.size = body.size();
 
     int v = ocsp_response(&ocsp_resp, cert, signer, &nonce);
-	gnutls_x509_crt_deinit(signer);
     printf("= verified: %i\n", v);
-
     gnutls_global_deinit();
-
     printf("= success\n");
     return 0;
 }
