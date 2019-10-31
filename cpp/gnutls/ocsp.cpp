@@ -70,6 +70,16 @@ void generate_request(gnutls_x509_crt_t cert, gnutls_x509_crt_t issuer,
 	return;
 }
 
+std::string
+static bytes_to_hex_string(const unsigned char* data, const int size)
+{
+    std::stringstream ss;
+    ss << std::hex;
+    for (int i = 0; i < size; i++)
+        ss << std::setw(2) << std::setfill('0') << (int)data[i];
+    return ss.str();
+}
+
 static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
                          gnutls_x509_crt_t signer, gnutls_datum_t* nonce)
 {
@@ -107,6 +117,8 @@ static int ocsp_response(gnutls_datum_t* data, gnutls_x509_crt_t cert,
     ret = gnutls_ocsp_resp_get_nonce(resp, NULL, &rnonce);
     if (ret < 0)
         exit(1);
+    printf("\n\nNonce sent: %s\n", bytes_to_hex_string(nonce->data, nonce->size).c_str());
+    printf("Nonce recv: %s\n\n", bytes_to_hex_string(rnonce.data, rnonce.size).c_str());
     if (rnonce.size != nonce->size || memcmp(nonce->data, rnonce.data,
         nonce->size) != 0){
         exit(1);
@@ -212,7 +224,6 @@ int main(int argc, char* argv[])
     using namespace dht;
     asio::io_context io_context;
     std::shared_ptr<dht::Logger> logger = dht::log::getStdLogger();
-    //aia_uri = "http://192.168.49.120:8080/api/auth/ocsp";
     auto request = std::make_shared<http::Request>(io_context, aia_uri, logger);
 
     request->set_method(restinio::http_method_post());
