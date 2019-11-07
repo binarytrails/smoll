@@ -27,6 +27,9 @@ proxy_restinio:
 		-I/usr/local/include/restinio -lfmt -lhttp_parser \
 		-o proxy_restinio.out
 
+crypto:
+	${CXX} ${CXXFLAGS} -std=c++14 crypto.cpp -o crypto.out
+
 dhtclient:
 	${CXX} ${CXXFLAGS} -std=c++14 dhtclient.cpp -o dhtclient.out
 
