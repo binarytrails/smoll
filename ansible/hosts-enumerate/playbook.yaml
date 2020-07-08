@@ -1,0 +1,13 @@
+---
+- name: test
+  hosts: all
+  gather_facts: no
+
+  pre_tasks:
+
+    - debug:
+        msg: "{{ item }} {{ index }}"
+      loop: "{{ ansible_play_batch }}"
+      loop_control:
+        index_var: index
+      run_once: True
