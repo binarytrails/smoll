@@ -1,6 +1,9 @@
-# Various
+# smoll
 
-## Index
+     _ __  _  |  | 
+    _> |||(_) |  | 
+
+## index
 
 Project | Language | Files
 --- | --- | ---
@@ -12,6 +15,6 @@ Web demos | Web | [preview](http://binarytrails.github.io/various/)
 
 Find out more by exploring!
 
-## Author
+## author
 
-Vsevolod Ivanov - seva@binarytrails.net
+vsevolod ivanov <seva@binarytrails.net>
