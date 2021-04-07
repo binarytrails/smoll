@@ -16,7 +16,7 @@ def get_parser():
     parser = argparse.ArgumentParser(__appname__, description=__description__)
     parser.add_argument('--version', '-v', action='version', version='%(prog)s '+__version__)
     parser.add_argument('--timezone', required=False, type=str, default='America/Montreal',
-                        help='Timezone string i.e. UTC, American/Montreal')
+                        help='Timezone string i.e. UTC, America/Montreal')
     parser.add_argument('--start-time', '-s', required=True,
                         type=lambda s: datetime.datetime.strptime(s, DT_FMT),
                         help="Start time i.e. '2021-04-05-14:00:00'")
