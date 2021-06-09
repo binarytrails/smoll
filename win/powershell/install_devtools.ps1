@@ -1,4 +1,5 @@
 # Package manager
+echo "Powershell must be run as Administrator for this command to work"
 Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 # Revision history
@@ -7,6 +8,9 @@ $Env:path += ";C:\Program Files\Git\bin"
 
 # Editors
 choco install -y vim
+choco install -y visualstudio2019community
+echo ".NET core and build tools"
+choco install visualstudio2019buildtools --package-parameters "--allWorkloads --includeRecommended --includeOptional --passive --locale en-US"
 
 # Archives
 choco install -y unzip
