@@ -25,7 +25,8 @@ choco install -y openvpn
 $Env:path += ";C:\Program Files\OpenVPN\bin"
 
 # Networking
-choco install -y netcat # nc
+choco install -y netcat     # nc
 
 # Binaries
-choco install -y dnspy  # analyser / editor
+choco install -y dnspy      # analyser / editor
+choco install -y ollydbg    # analyser / debugger
