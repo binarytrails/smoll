@@ -19,5 +19,8 @@ list_files:
 	g++ -std=c++11 -lboost_system -lboost_filesystem \
 		list_files.cpp -o list_files.out
 
+stdout_redirect:
+	g++ stdout_redirect.cpp -o stdout_redirect.out
+
 clean:
 	rm -f *.out
