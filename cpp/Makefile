@@ -22,5 +22,8 @@ list_files:
 stdout_redirect:
 	g++ stdout_redirect.cpp -o stdout_redirect.out
 
+split_string_on_spaces:
+	g++ split_string_on_spaces.cpp -o split_string_on_spaces.out
+
 clean:
 	rm -f *.out
