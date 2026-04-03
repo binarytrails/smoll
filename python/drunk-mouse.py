@@ -9,7 +9,10 @@ cap = {
 
 with UInput(cap, name='virtual-mouse') as ui:
     print("Virtual mouse created. Moving in 2 seconds...")
+    print('---------------------------------------------------')
     print('We shall keep your Remote Desktop sessions! uWu ><"')
+    print('---------------------------------------------------')
+    print('Tested with https://github.com/SupremeTechnopriest/react-idle-timer')
     time.sleep(2)
     
     radius = 2
